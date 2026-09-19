@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+websockets==14.1
+pydantic==2.11.7
+pydantic-settings==2.7.1
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+psycopg[binary]==3.2.3
+pgvector==0.3.6
+redis==5.2.1
+celery==5.4.0
+langgraph==0.2.62
+openai==1.58.1
+mcp==1.28.1
+python-dotenv==1.0.1

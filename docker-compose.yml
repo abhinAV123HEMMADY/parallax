@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mentra-postgres
+    environment:
+      POSTGRES_USER: mentra
+      POSTGRES_PASSWORD: mentra
+      POSTGRES_DB: mentra
+    ports:
+      # Host port 5433, not 5432 — many dev machines already have a native Postgres on 5432,
+      # which macOS will route "localhost" to instead of this container.
+      - "5433:5432"
+    volumes:
+      - mentra_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mentra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mentra-redis
+    ports:
+      # Host port 6380, not 6379 — same reasoning as the Postgres port above.
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mentra_pg_data:

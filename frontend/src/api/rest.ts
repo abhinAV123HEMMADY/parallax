@@ -1,0 +1,106 @@
+import type { ExamPlan, MasteryGraph, MentraUser, ProtegeTurnResult, SquadProposal, StruggleFeedItem } from "../types";
+
+// Production builds default to the hosted backend so a static deploy works without any
+// dashboard env config; VITE_API_BASE_URL still overrides when set.
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD ? "https://mentra-backend-mats.onrender.com" : "http://localhost:8000");
+
+// Every endpoint reflects real backend state or fails loudly. No client-side simulation of
+// lessons, quizzes, mastery, or Protégé Mode: if the backend is unreachable, callers see a
+// real error and the UI shows an honest "couldn't load" state.
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+export function startLearning(learnerId: string, topicInput: string, inputMode: "text" | "photo") {
+  return postJson<{ session_id: string; status: string }>("/learn", {
+    learner_id: learnerId,
+    topic_input: topicInput,
+    input_mode: inputMode,
+  });
+}
+
+export function submitConfidence(cardId: string, learnerId: string, rating: number, recalled: boolean) {
+  return postJson<{ status: string; next_due_days: number; mastery_score: number | null; topic_id: string | null }>(
+    "/learn/confidence",
+    {
+      card_id: cardId,
+      learner_id: learnerId,
+      rating,
+      recalled,
+    },
+  );
+}
+
+export function submitQuizAnswer(lessonId: string, question: string, correct: boolean, modalityUsed?: string) {
+  return postJson<{ status: string; mastery_score: number | null; topic_id: string }>("/learn/quiz-answer", {
+    lesson_id: lessonId,
+    question,
+    correct,
+    modality_used: modalityUsed ?? null,
+  });
+}
+
+export function listUsers() {
+  return getJson<MentraUser[]>("/users");
+}
+
+export function createUser(name: string, gradeLevel?: string) {
+  return postJson<MentraUser>("/users", { name, grade_level: gradeLevel ?? null });
+}
+
+export function getExamPlan(learnerId: string, daysUntilExam: number): Promise<ExamPlan> {
+  return postJson<ExamPlan>("/exam/plan", {
+    learner_id: learnerId,
+    days_until_exam: daysUntilExam,
+  });
+}
+
+export function getStruggleFeed(userId: string): Promise<StruggleFeedItem[]> {
+  return getJson<StruggleFeedItem[]>(`/peer/feed/${userId}`);
+}
+
+export function getSquadProposals(topicId: string): Promise<SquadProposal[]> {
+  return getJson<SquadProposal[]>(`/peer/squads/${topicId}`);
+}
+
+export function getMasteryGraph(userId: string): Promise<MasteryGraph> {
+  return getJson<MasteryGraph>(`/mastery/graph/${userId}`);
+}
+
+export function postQna(topicId: string, authorId: string, body: string) {
+  return postJson<{ id: string; moderation_status: string }>("/peer/qna", {
+    topic_id: topicId,
+    author_id: authorId,
+    body,
+  });
+}
+
+export function startProtege(topicName: string, learnerId: string): Promise<ProtegeTurnResult> {
+  return postJson<ProtegeTurnResult>("/protege/start", { topic_name: topicName, learner_id: learnerId });
+}
+
+export function sendProtegeTurn(sessionId: string, learnerExplanation: string): Promise<ProtegeTurnResult> {
+  return postJson<ProtegeTurnResult>("/protege/turn", {
+    session_id: sessionId,
+    learner_explanation: learnerExplanation,
+  });
+}
+
+export function publishProtegeExplanation(sessionId: string) {
+  return postJson<{ id: string; moderation_status: string }>("/protege/publish", { session_id: sessionId });
+}

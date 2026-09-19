@@ -1,0 +1,36 @@
+# One-click Render Blueprint: API container (uvicorn + Celery + 4 MCP servers via
+# deploy/start.sh), managed Postgres (pgvector is on Render's allowed-extensions list;
+# init_db runs CREATE EXTENSION on boot), and a Key Value (Redis) instance.
+#
+# After the blueprint deploys, point the Vercel frontend at it:
+#   VITE_API_BASE_URL = https://<this-service>.onrender.com
+#   VITE_WS_BASE_URL  = wss://<this-service>.onrender.com
+services:
+  - type: web
+    name: mentra-backend
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mentra-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: mentra-redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false # set in the dashboard when the blueprint prompts for it
+      - key: CORS_ORIGINS
+        value: "*" # tighten to the Vercel domain once you know it
+
+  - type: keyvalue
+    name: mentra-redis
+    plan: free
+    ipAllowList: [] # internal connections only
+
+databases:
+  - name: mentra-db
+    plan: free
