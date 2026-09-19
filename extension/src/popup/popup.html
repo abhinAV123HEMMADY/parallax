@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mentra</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        width: 320px; margin: 0; padding: 14px;
+        font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 { font-size: 14px; margin: 0 0 10px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .muted { opacity: .65; font-size: 12px; }
+      .note { border-top: 1px solid rgba(127,127,127,.25); padding: 8px 0; }
+      .ts { color: #3ea6ff; font-weight: 600; font-variant-numeric: tabular-nums; }
+      a { color: #3ea6ff; }
+      button {
+        font: inherit; font-size: 12px; cursor: pointer; padding: 6px 10px;
+        border-radius: 8px; border: 1px solid rgba(127,127,127,.35); background: transparent;
+        color: inherit;
+      }
+      .error { color: #c0392b; }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <h1>Mentra</h1>
+      <button id="options">Settings</button>
+    </div>
+    <p class="muted" id="status">Loading…</p>
+    <div id="notes"></div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

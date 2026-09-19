@@ -1,3 +1,7 @@
 mcp==1.28.1
 asyncpg==0.30.0
 python-dotenv==1.0.1
+fastembed==0.8.0
+# Also requires the shared embedder: `pip install -e ./shared` from the repo root.
+# Not listed as a relative path here because pip resolves those against the current
+# working directory, not this file, which breaks depending on where you run it from.

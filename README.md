@@ -27,32 +27,50 @@ actually in this scaffold, how to run it, and how to exercise every demoable flo
 
 ## Scaffold depth
 
-Every layer runs for real end-to-end. The agent nodes that use the Claude API — intent
-parsing, lesson generation, quiz + re-explanations, snap-a-problem error localization
-(vision), and both Protégé Mode agents — call Claude live when `ANTHROPIC_API_KEY` is set,
-and every one degrades to a deterministic stub with the same output shape when it isn't (or
-when a live call fails), so the full pipeline still demos with no key and no network.
+Every layer runs for real end-to-end. The LLM-backed agent nodes — intent parsing, lesson
+generation, quiz + re-explanations, snap-a-problem error localization (vision), and both
+Protégé Mode agents — call the provider live when `OPENAI_API_KEY` is set, and every one
+degrades to a deterministic stub with the same output shape when it isn't (or when a live call
+fails), so the full pipeline still demos with no key and no network. The provider call is
+centralized in `backend/app/llm.py`, which is the single place translating each node's
+Anthropic-shaped tool schema and vision blocks to the wire format actually in use.
 Everything that's a deterministic algorithm rather than an LLM call is implemented for real:
 
 - Prerequisite-graph traversal and gap redirection (`backend/app/orchestrator/nodes/prerequisite_graph.py`)
 - FSRS flashcard scheduling (`backend/app/fsrs/scheduler.py`)
 - Exam-date-aware review planning with baseline-vs-plan retrievability projection
   (`backend/app/fsrs/exam_planner.py`, served by `POST /exam/plan`)
-- Mastery scoring and struggle-signal emission (`backend/app/orchestrator/nodes/mastery_scorer.py`)
+- Mastery scoring and struggle-signal emission (`backend/app/mastery/service.py`)
 - Peer struggle-feed aggregation and study-squad formation (`backend/app/peer/engine.py`)
 - All four MCP servers (video transcript search, tutor matching, calendar booking with a real
   15-minute hold, and nearby-tutor geo search) run as real MCP protocol servers over
   streamable-HTTP, queried by the orchestrator as a real MCP client — no simulated tool calls.
 
-Embeddings (topic, transcript, tutor) use a deterministic placeholder function
-(`pseudo_embed`, duplicated in each service that needs it) instead of a real embedding model,
-so pgvector similarity search is exercised end-to-end without an external API dependency. Swap
-it for Claude embeddings / sentence-transformers when you're ready.
+Embeddings (topic, transcript, tutor) are real: `BAAI/bge-small-en-v1.5` via `fastembed`,
+served from one shared package (`shared/mentra_embed`) that the backend, the seed script and
+both vector-search MCP servers import. It runs locally on ONNX — no API key, no PyTorch, and
+no external call — and outputs 384 dimensions, which is exactly the width the `Vector` columns
+already declared, so adopting it needed no migration.
+
+This replaced a deterministic placeholder (`pseudo_embed`) that hashed the input and returned a
+random unit vector. That placeholder exercised the pgvector plumbing but made every ranking
+arbitrary: measured on it, `"limits"` scored **-0.043** against `"Introduction to limits | Khan
+Academy"` — a topic scored *negatively* against its own matching video title. The same pair
+scores **+0.813** now, and `search_transcripts("how do I find the slope of a curve")` returns
+the instantaneous-rate-of-change lecture first despite sharing no words with its title.
+
+The placeholder is still reachable via `MENTRA_EMBED=hash` so the project stays runnable where
+the model can't be downloaded; rankings under it are noise by construction. `/health` reports
+which backend is live. After changing the setting or the model, run `make reembed` — vectors
+written by different embedders are not comparable, and mixing them degrades ranking silently
+rather than erroring.
 
 ## Architecture
 
 ```
-frontend (React/Vite)  →  backend (FastAPI + WebSocket)  →  Celery worker
+frontend (React/Vite) ─┐
+                       ├→  backend (FastAPI + WebSocket)  →  Celery worker
+extension (MV3, Chrome)┘
                                                                   │
                                                      LangGraph StateGraph
                                                     (backend/app/orchestrator)
@@ -76,14 +94,15 @@ still generating in parallel (`backend/app/tasks.py`, `frontend/src/api/ws.ts`).
 
 ## In scope vs. deferred
 
-**In scope (this build):** FSRS spaced repetition, exam-date-aware review planning,
+**In scope (this build):** Watch & Note (timestamped YouTube notes with frame captures, caption
+ingest, video Q&A, clickable-timestamp PDF export, notes-to-flashcards) via a Chrome extension,
+FSRS spaced repetition, exam-date-aware review planning,
 prerequisite-graph gap tracing, quiz modality re-explanation, confidence tagging,
 snap-a-problem error-step localization, timestamp-level video search, tutor matching +
 filters + real-time booking holds, the peer struggle feed, study squads, topic Q&A with
-moderation, and mentor-track profiles. The frontend also ships a client-side demo layer
-(`frontend/src/api/demo.ts`, `examPlan.ts`): when the backend isn't reachable — e.g. a
-static deploy — every surface falls back to realistic canned data and a client-side port
-of the exam planner, so the whole product demos from a static host.
+moderation, and mentor-track profiles. There is deliberately no client-side simulation layer:
+every surface reflects real backend state or shows an honest error, so a number on screen is
+always one the backend produced (`frontend/src/api/rest.ts`).
 
 **Deferred (future work):** LMS integration (Canvas / Google Classroom), a parent/teacher
 dashboard, real tutor background-check verification, and payments/dispute handling — each
@@ -105,6 +124,10 @@ cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cd ..
 
+# 2b. Shared embedder — one editable install, used by the backend AND the MCP servers.
+# Run once per virtualenv. The embedding model itself (~130MB) downloads on first use.
+make install-shared
+
 # 3. Schema + seed data
 make seed                # creates tables, seeds topics/tutors/videos/connections/struggle events
 
@@ -125,6 +148,89 @@ make frontend              # vite dev server on :5173
 ```
 
 Open `http://localhost:5173`.
+
+## Watch & Note (Chrome extension)
+
+Mentra already found the exact timestamp in a lecture that explains a topic. Watch & Note turns
+YouTube itself into the workspace: capture a note at the current second, with a real screenshot of
+the frame, and it syncs to your learner profile.
+
+It is a **Chrome extension rather than a page in the web app** because two things it needs are
+impossible from page JavaScript:
+
+- **Frame capture.** A web page cannot screenshot a YouTube player — it's a cross-origin iframe, so
+  drawing it to a canvas taints the canvas and `toDataURL()` throws. `chrome.tabs.captureVisibleTab`
+  is not page JavaScript, so it can.
+- **Real transcripts.** Server-side transcript fetching is the flakiest part of any YouTube
+  integration (`youtube-transcript-api` gets IP-blocked from cloud hosts). A content script runs *on*
+  youtube.com, so reading the caption track is same-origin and simply works. Those captions are
+  chunked, embedded, and written into the same `video_transcript_chunks` table the Video Transcript
+  MCP server already queries — so **every video a learner watches becomes searchable by the existing
+  pipeline**, replacing the four hand-seeded rows.
+
+The extension is a capture client, not a second Mentra. It holds the panel, capture, video Q&A and
+caption ingest; everything heavier — mastery map, exam planner, peer feed, tutor hub, Protégé Mode,
+and PDF export — stays in the web app, which the extension deep-links into.
+
+**Notes are an attention signal, not a mastery signal.** Mastery means demonstrated understanding
+(quiz accuracy, flashcard confidence, teach-back). Taking a note demonstrates neither, so notes never
+touch `MasteryScore` — folding them in would make the most diligent note-taker in a cohort score as
+the one struggling most. Instead a note writes a `StruggleEvent` whose severity is *derived* from how
+many notes the learner has left on that topic recently, crossing `peer/engine.py`'s cutoff on the
+third note: one note is not a struggle, returning three times is. Sharing is opt-in per note.
+
+Notes close the loop through `POST /notes/topic/{id}/flashcards`, which turns them into
+FSRS-scheduled cards. Those cards hang off a **synthetic `Lesson`** row rather than a nullable FK,
+because `recompute_mastery` reaches flashcards by joining through `Lesson` — so reviewing a
+note-derived card feeds mastery exactly like any other card, which is correct: the review is the
+demonstration.
+
+### Load the extension
+
+```bash
+make extension          # installs deps and builds extension/dist
+```
+
+1. Open `chrome://extensions`, enable Developer mode, **Load unpacked**, and select
+   `extension/dist`.
+2. Open the extension's **Options**. It prints the exact `chrome-extension://…` origin — add it to
+   `CORS_ORIGINS` in `.env` and restart `make backend`.
+3. Still in Options, pick a learner profile (e.g. `u_amy`) and save.
+4. Open any YouTube lecture. The panel appears beside the player.
+
+`Alt+N` captures a note without leaving the video.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/notes` | Create a note (screenshot capped at 200KB → 413) |
+| `GET` | `/notes?learner_id=&video_id=` | One video's timeline, ordered by timestamp |
+| `GET` | `/notes/recent?learner_id=` | Newest notes across videos (popup) |
+| `GET` | `/notes/{id}` | One note **with** its screenshot |
+| `DELETE` | `/notes/{id}` | Delete (403 on another learner's note) |
+| `GET` | `/notes/topic/{id}` | Notes across videos for a topic |
+| `POST` | `/notes/videos/{id}/transcript` | Ingest a caption track (idempotent by replacement) |
+| `GET` | `/notes/videos/{id}/topic-suggestion` | Lexical + semantic video→topic match |
+| `POST` | `/notes/videos/{id}/ask` | Q&A over the transcript, citing timestamps |
+| `POST` | `/notes/topic/{id}/flashcards` | Notes → FSRS cards |
+
+### Known limitations
+
+- **Learner selection is not authentication.** The backend has no auth; the extension stores a chosen
+  learner id. Anyone with the extension and your backend URL can read and write that profile's notes.
+  The production answer is a token issued by a sign-in page in the web app. Run this against a local
+  or private backend only.
+- **Screenshots are data URLs in a Postgres text column.** Object storage with a signed URL is the
+  right answer. This is made survivable by a 200KB cap and by downscaling to 480px JPEG in the
+  extension before upload.
+- **DRM-protected playback captures black.** Ordinary YouTube videos are fine.
+- **Caption extraction depends on YouTube internals** (`ytInitialPlayerResponse`, the `timedtext`
+  formats, the caption DOM classes) which are undocumented and do change. It is isolated in
+  `extension/src/content/captions.ts` behind one contract with two independent paths and a graceful
+  failure, so a YouTube change breaks one file and notes still save without an excerpt.
+- **A video with no captions** gets no transcript, so search and Q&A are unavailable for it; notes
+  still work.
 
 ## Demo walkthrough
 
@@ -160,13 +266,34 @@ Open `http://localhost:5173`.
    event. Because all three are mutually connected and struggling on the same topic, a study
    squad is proposed (`propose_squads_for_topic`, Section 7.3).
 
-7. **Tutor booking hold.** On the Tutor Hub, search "derivatives" — results come from a real
+7. **Watch & Note.** With the extension loaded and `u_amy` selected, open
+   `https://www.youtube.com/watch?v=riXcZT2ICjA` (a seeded Khan Academy limits lecture). The panel
+   reads the caption track, ingests it (`Transcript synced — N cues in M searchable chunks`), and
+   matches the video to the `limits` topic. Capture a moment: the video pauses, the composer shows
+   the words spoken at that second, and a cropped frame is attached. The saved note appears in the
+   timeline — click its timestamp to seek back. Ask "how does this relate to derivatives?" and the
+   answer cites a real timestamp. Hit **Export PDF** and every entry in the PDF links back to its
+   second on YouTube.
+
+8. **Tutor booking hold.** On the Tutor Hub, search "derivatives" — results come from a real
    MCP call to the Tutor Match server (pgvector similarity + verification tier + price/format
    filters). Click a tutor, pick an open slot — this calls the Calendar MCP server's
    `create_booking_hold`, which writes a real row with a 15-minute expiry and rejects a
    conflicting second hold on the same slot.
 
-## What's not tested
+## Tests
 
-No automated test suite is included in this pass — a natural next step once the demoable
-flows above are validated by hand.
+`make test` runs the suite from `backend/`. Coverage is currently the embedding layer
+(`backend/tests/test_embedding.py`), which asserts *semantic* behaviour rather than shape —
+that related text outranks unrelated text. That distinction is the point: the hash placeholder
+this replaced passed every "returns 384 floats" assertion while ranking arbitrarily, so only an
+ordering assertion catches a regression back to it. Running the suite under `MENTRA_EMBED=hash`
+fails exactly the three semantic tests and passes the four structural ones.
+
+`make test-extension` runs the extension's unit tests (`vitest`) over its pure logic only: caption
+parsing for both of YouTube's transcript formats, cue lookup at a timestamp, and the send queue's
+retry policy. Chrome APIs and YouTube's DOM are deliberately not mocked — a mock of them would only
+assert that the mock behaves like the mock, and those paths are verified by loading the extension.
+
+The rest of the deterministic logic — FSRS scheduling, the exam planner, peer squad formation,
+prerequisite-gap redirection — is still untested and is the natural next step.

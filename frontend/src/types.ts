@@ -160,3 +160,36 @@ export interface MasteryGraph {
     overall: number;
   };
 }
+
+// --- Video notes (Watch & Note) ---
+
+export interface VideoNote {
+  id: string;
+  video_id: string;
+  video_title: string;
+  topic_id: string | null;
+  topic_name: string | null;
+  t_seconds: number;
+  learner_text: string;
+  transcript_excerpt: string | null;
+  has_screenshot: boolean;
+  created_at: string;
+}
+
+/** A note with its image resolved. List endpoints omit screenshots (they're large), so the PDF
+ * routes fetch each note's detail before rendering. */
+export interface VideoNoteWithImage extends VideoNote {
+  screenshot: string | null;
+}
+
+export interface VideoNotePack {
+  video_id: string;
+  video_title: string;
+  notes: VideoNoteWithImage[];
+}
+
+export interface TopicNotePack {
+  topic_id: string;
+  topic_name: string;
+  videos: VideoNotePack[];
+}

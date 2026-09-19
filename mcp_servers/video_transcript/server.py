@@ -5,31 +5,17 @@ and exposes search_transcripts, returning the single highest-relevance timestamp
 rather than a whole video — turning a 40-minute lecture into a 90-second answer.
 """
 
-import hashlib
 import os
-import random
 
 import asyncpg
 from mcp.server.fastmcp import FastMCP
+from mentra_embed import embed_query
 
 DATABASE_URL = os.environ.get("MCP_DATABASE_URL", "postgresql://mentra:mentra@localhost:5433/mentra")
 PORT = int(os.environ.get("PORT", 8101))
 
 mcp = FastMCP("video-transcript-mcp", port=PORT)
 _pool: asyncpg.Pool | None = None
-
-
-def pseudo_embed(text: str, dim: int = 384) -> list[float]:
-    """Deterministic placeholder embedding (no external embedding model call) — same text
-    always maps to the same unit vector. Real implementation: Claude embeddings /
-    sentence-transformers (Section 11). Intentionally duplicated in each service that needs
-    it so MCP servers stay independent processes with no shared-package dependency.
-    """
-    seed = int(hashlib.sha256(text.lower().encode()).hexdigest(), 16) % (2**32)
-    rng = random.Random(seed)
-    vec = [rng.gauss(0, 1) for _ in range(dim)]
-    norm = sum(v * v for v in vec) ** 0.5
-    return [v / norm for v in vec]
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -48,7 +34,9 @@ async def search_transcripts(topic_query: str, difficulty_level: str = "intro", 
     the seeded chunk table doesn't have enough rows per level for a real filter to be
     meaningful yet, so ranking is by embedding similarity only for now.
     """
-    embedding = pseudo_embed(topic_query)
+    # embed_query, not embed_document: bge is asymmetric and the query side takes an
+    # instruction prefix. Chunks were stored with embed_document at seed/ingest time.
+    embedding = embed_query(topic_query)
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(

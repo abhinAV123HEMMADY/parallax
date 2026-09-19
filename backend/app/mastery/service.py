@@ -13,8 +13,9 @@ all there is no row — the topic stays genuinely untouched.
 """
 
 import uuid
+from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +26,9 @@ QUIZ_WEIGHT = 0.35
 FLASHCARD_WEIGHT = 0.25
 PROTEGE_WEIGHT = 0.40  # a generative demonstration of understanding is harder to fake than
 # recognizing an answer or self-rating confidence — weighted highest (Section 9.5).
+
+NOTE_SIGNAL = "note_marked"
+NOTES_TO_REACH_CUTOFF = 3  # notes on one topic before the signal counts as struggle
 
 
 async def recompute_mastery(db: AsyncSession, learner_id: str, topic_id: str) -> float | None:
@@ -116,3 +120,62 @@ async def recompute_mastery(db: AsyncSession, learner_id: str, topic_id: str) ->
         )
 
     return mastery
+
+
+async def record_note_signal(db: AsyncSession, learner_id: str, topic_id: str | None, share: bool) -> None:
+    """Records a video note as an *attention* signal — deliberately not a mastery input.
+
+    Mastery here means demonstrated understanding: quiz accuracy, flashcard confidence, and
+    teach-back, weighted above. Taking a note demonstrates nothing about whether the learner
+    understood — it demonstrates that something caught their attention. Folding it into
+    recompute_mastery would mean the most diligent note-taker in a cohort scores as the one
+    struggling most, which inverts the thing the score is for. So notes write a StruggleEvent
+    (which the peer layer reads) and never touch MasteryScore.
+
+    Severity is derived, not fixed, and that matters for whether this function does anything at
+    all. peer/engine.py gates the feed and squad formation on severity >= STRUGGLE_SEVERITY_CUTOFF
+    inside SQUAD_WINDOW_DAYS, so a fixed low severity would make every note signal inert — written
+    to the table, read by nothing. Deriving it encodes the actual belief: one note on a topic is
+    not evidence of difficulty, but returning to mark the same topic repeatedly is. Severity
+    scales with the learner's recent note count and crosses the cutoff on the third note.
+
+    The thresholds are imported from peer.engine rather than restated, so a change there can't
+    silently strand this at the wrong side of the line. Does not commit — the route owns the
+    transaction, matching recompute_mastery.
+    """
+    if topic_id is None:
+        return
+
+    from app.peer.engine import SQUAD_WINDOW_DAYS, STRUGGLE_SEVERITY_CUTOFF
+
+    since = datetime.utcnow() - timedelta(days=SQUAD_WINDOW_DAYS)
+    recent = (
+        await db.execute(
+            select(func.count())
+            .select_from(StruggleEvent)
+            .where(
+                StruggleEvent.user_id == learner_id,
+                StruggleEvent.topic_id == topic_id,
+                StruggleEvent.signal_type == NOTE_SIGNAL,
+                StruggleEvent.created_at >= since,
+            )
+        )
+    ).scalar_one()
+
+    # `recent` excludes the note being recorded now, so nth note sees n-1. Reaching the cutoff
+    # exactly on the third note means the first two stay below it.
+    nth = recent + 1
+    severity = round(min(1.0, STRUGGLE_SEVERITY_CUTOFF * nth / NOTES_TO_REACH_CUTOFF), 3)
+
+    db.add(
+        StruggleEvent(
+            id=str(uuid.uuid4()),
+            user_id=learner_id,
+            topic_id=topic_id,
+            signal_type=NOTE_SIGNAL,
+            severity=severity,
+            # get_struggle_feed drops private rows, so an unshared note is recorded for the
+            # learner's own history without ever reaching a peer.
+            visibility="connections" if share else "private",
+        )
+    )

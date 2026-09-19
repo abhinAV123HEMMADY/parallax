@@ -3,12 +3,12 @@ connection graph, and struggle events — enough to drive every flow in the READ
 """
 
 import asyncio
-import hashlib
 import os
-import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from mentra_embed import embed_document  # noqa: E402
 
 from app.database import async_session  # noqa: E402
 from app.models import (  # noqa: E402
@@ -23,17 +23,6 @@ from app.models import (  # noqa: E402
     User,
     VideoTranscriptChunk,
 )
-
-
-def pseudo_embed(text: str, dim: int = 384) -> list[float]:
-    """Deterministic placeholder embedding — see mcp_servers/*/server.py for rationale.
-    Duplicated here (rather than imported) so this script has no dependency on those services.
-    """
-    seed = int(hashlib.sha256(text.lower().encode()).hexdigest(), 16) % (2**32)
-    rng = random.Random(seed)
-    vec = [rng.gauss(0, 1) for _ in range(dim)]
-    norm = sum(v * v for v in vec) ** 0.5
-    return [v / norm for v in vec]
 
 
 TOPIC_CHAIN = [
@@ -118,7 +107,7 @@ async def main():
                     id=name,
                     name=name.replace("-", " "),
                     subject=subject,
-                    content_embedding=pseudo_embed(name),
+                    content_embedding=embed_document(name),
                     common_misconceptions=DERIVATIVE_MISCONCEPTIONS if name == "derivatives" else None,
                 )
             )
@@ -178,7 +167,7 @@ async def main():
                     id=tid,
                     name=name,
                     subjects=subjects,
-                    specialty_embedding=pseudo_embed(" ".join(subjects) + " " + name),
+                    specialty_embedding=embed_document(" ".join(subjects) + " " + name),
                     location_lat=lat,
                     location_lng=lng,
                     verification_tier=tier,
@@ -207,7 +196,7 @@ async def main():
                     chunk_start_seconds=start,
                     chunk_text=chunk_text,
                     difficulty_level=difficulty,
-                    chunk_embedding=pseudo_embed(title + " " + chunk_text),
+                    chunk_embedding=embed_document(title + " " + chunk_text),
                 )
             )
 

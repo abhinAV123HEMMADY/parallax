@@ -1,4 +1,5 @@
 from app.models.lesson import ConfidenceRating, Flashcard, Lesson, QuizAttempt
+from app.models.note import VideoNote
 from app.models.peer import Connection, StruggleEvent, StudySquad
 from app.models.protege import ProtegeSession
 from app.models.qna import MentorProfile, QnaPost
@@ -20,6 +21,7 @@ __all__ = [
     "Booking",
     "SessionRecap",
     "VideoTranscriptChunk",
+    "VideoNote",
     "Connection",
     "StruggleEvent",
     "StudySquad",
