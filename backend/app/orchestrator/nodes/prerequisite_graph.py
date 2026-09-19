@@ -2,17 +2,9 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.database import async_session
-from app.models import MasteryScore, PrerequisiteEdge, Topic
+from app.models import MasteryScore, Topic
 from app.orchestrator.state import LearningState
-
-
-async def _upstream_of(db, topic_id: str) -> list[Topic]:
-    result = await db.execute(
-        select(Topic)
-        .join(PrerequisiteEdge, PrerequisiteEdge.prerequisite_topic_id == Topic.id)
-        .where(PrerequisiteEdge.topic_id == topic_id)
-    )
-    return list(result.scalars().all())
+from app.topics.graph import upstream_of
 
 
 async def _get_mastery(db, learner_id: str, topic_id: str) -> float:
@@ -53,7 +45,7 @@ async def prerequisite_graph_node(state: LearningState) -> dict:
             return {"parsed_objectives": objectives, "prerequisite_gap": diagnosed.id}
 
     async with async_session() as db:
-        for prereq in await _upstream_of(db, topic_id):
+        for prereq in await upstream_of(db, topic_id):
             mastery = await _get_mastery(db, learner_id, prereq.id)
             if mastery < settings.gap_threshold:
                 prerequisite_gap = prereq.id

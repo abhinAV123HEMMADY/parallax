@@ -5,27 +5,17 @@ ceiling, session format, and verification tier — the verification tier is surf
 in the match result rather than hidden behind a separate profile click.
 """
 
-import hashlib
 import os
-import random
 
 import asyncpg
 from mcp.server.fastmcp import FastMCP
+from mentra_embed import embed_query
 
 DATABASE_URL = os.environ.get("MCP_DATABASE_URL", "postgresql://mentra:mentra@localhost:5433/mentra")
 PORT = int(os.environ.get("PORT", 8102))
 
 mcp = FastMCP("tutor-match-mcp", port=PORT)
 _pool: asyncpg.Pool | None = None
-
-
-def pseudo_embed(text: str, dim: int = 384) -> list[float]:
-    """Deterministic placeholder embedding — see video_transcript/server.py for rationale."""
-    seed = int(hashlib.sha256(text.lower().encode()).hexdigest(), 16) % (2**32)
-    rng = random.Random(seed)
-    vec = [rng.gauss(0, 1) for _ in range(dim)]
-    norm = sum(v * v for v in vec) ** 0.5
-    return [v / norm for v in vec]
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -46,7 +36,8 @@ async def find_tutors(
     session_format: str | None = None,
     verification_tier: str | None = None,
 ) -> list[dict]:
-    embedding = pseudo_embed(topic_query)
+    # Query side of an asymmetric model — see video_transcript/server.py.
+    embedding = embed_query(topic_query)
 
     clauses = ["$2 = ANY(subjects)"]
     params: list = [str(embedding), subject]

@@ -27,5 +27,15 @@ class Settings(BaseSettings):
 
     gap_threshold: float = 0.5  # below this mastery score, prerequisite agent redirects
 
+    # Below these, a video is left unmapped rather than attached to a plausible-but-wrong topic.
+    # A wrong mapping is worse than none: it attributes the learner's attention to a concept they
+    # weren't studying, and that error propagates into the peer feed and squad formation.
+    note_topic_lexical_threshold: float = 0.5
+    note_topic_semantic_threshold: float = 0.62
+
+    # Screenshots are data URLs in a text column (see models/note.py). The cap is what makes
+    # that survivable; the extension downscales before upload so normal frames sit far below it.
+    max_screenshot_bytes: int = 200_000
+
 
 settings = Settings()

@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Mentra — Watch & Note",
+  "version": "0.1.0",
+  "description": "Capture timestamped notes with frame snapshots on YouTube lectures, synced to Mentra.",
+  "permissions": ["storage", "scripting", "activeTab", "alarms"],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Mentra",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "capture-note": {
+      "suggested_key": { "default": "Alt+N" },
+      "description": "Capture a note at the current timestamp"
+    }
+  }
+}

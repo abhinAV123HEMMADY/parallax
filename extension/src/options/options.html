@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mentra settings</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        max-width: 560px; margin: 40px auto; padding: 0 20px;
+        font: 14px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      label { display: block; margin: 18px 0 6px; font-weight: 600; font-size: 13px; }
+      input[type="text"], select {
+        width: 100%; font: inherit; padding: 8px; border-radius: 8px;
+        border: 1px solid rgba(127,127,127,.4); background: transparent; color: inherit;
+      }
+      .muted { opacity: .68; font-size: 13px; }
+      .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+      button {
+        font: inherit; cursor: pointer; padding: 8px 14px; border-radius: 8px;
+        border: 0; background: #3ea6ff; color: #04121f; font-weight: 600;
+      }
+      .warn {
+        border-left: 3px solid #e0a030; padding: 10px 12px; margin-top: 22px;
+        background: rgba(224,160,48,.08); font-size: 13px;
+      }
+      #saved { color: #2e9e5b; font-size: 13px; }
+      .error { color: #c0392b; font-size: 13px; }
+      code { font-size: 12px; background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Mentra — Watch &amp; Note</h1>
+    <p class="muted">Notes you capture on YouTube sync to your Mentra learner profile.</p>
+
+    <label for="apiBase">Backend URL</label>
+    <input type="text" id="apiBase" placeholder="http://localhost:8000" />
+    <p class="muted" id="reach"></p>
+
+    <label for="learner">Learner profile</label>
+    <select id="learner"><option value="">Loading…</option></select>
+
+    <div class="row">
+      <input type="checkbox" id="share" />
+      <label for="share" style="margin: 0; font-weight: 400;">Share new notes with my connections by default</label>
+    </div>
+
+    <div class="row">
+      <button id="save">Save</button>
+      <span id="saved"></span>
+    </div>
+
+    <div class="warn">
+      <strong>This is learner selection, not authentication.</strong> Anyone with this extension
+      and your backend URL can read and write notes for the profile chosen here. The production
+      answer is a token issued by a sign-in page in the Mentra web app and stored per install;
+      that does not exist yet, so run this against a local or private backend only.
+    </div>
+
+    <p class="muted" id="cors"></p>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
