@@ -1,7 +1,7 @@
 from app.models.lesson import ConfidenceRating, Flashcard, Lesson, QuizAttempt
 from app.models.note import VideoNote
 from app.models.peer import Connection, StruggleEvent, StudySquad
-from app.models.protege import ProtegeRecap, ProtegeSession
+from app.models.protege import ProtegeConcession, ProtegeRecap, ProtegeSession
 from app.models.qna import MentorProfile, QnaPost
 from app.models.topic import MasteryScore, PrerequisiteEdge, Topic
 from app.models.tutor import Booking, SessionRecap, TutorProfile
@@ -29,4 +29,5 @@ __all__ = [
     "MentorProfile",
     "ProtegeSession",
     "ProtegeRecap",
+    "ProtegeConcession",
 ]

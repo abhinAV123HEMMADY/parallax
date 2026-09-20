@@ -28,6 +28,26 @@ class ProtegeSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class ProtegeConcession(Base):
+    """A misconception the persona explained itself after the learner punted twice.
+
+    Kept apart from ProtegeSession.misconceptions_resolved on purpose: both close the
+    misconception so the conversation can move on, but only resolved ones are taught, and
+    only taught ones count toward the understanding score. Conflating them let a learner
+    answer "I don't know" repeatedly and finish with a passing score.
+
+    Its own table rather than a column because the schema comes from create_all, which adds
+    missing tables but never missing columns.
+    """
+
+    __tablename__ = "protege_concessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id: Mapped[str] = mapped_column(String, ForeignKey("protege_sessions.id"))
+    misconception_id: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ProtegeRecap(Base):
     """A finished session's recap, written once when the session clears the threshold.
 

@@ -64,9 +64,15 @@ async def write_session_recap(
     transcript: list[dict],
     misconceptions: list[dict],
     resolved_ids: list[str],
+    conceded_ids: list[str] | None = None,
 ) -> dict:
+    conceded_ids = conceded_ids or []
     resolved = [m for m in misconceptions if m["id"] in resolved_ids]
+    # Conceded points are ones the persona explained itself. They belong in "still shaky"
+    # rather than being silently dropped — the learner never taught them, and a recap that
+    # omits them reads as if the session covered less than it did.
     unresolved = [m for m in misconceptions if m["id"] not in resolved_ids]
+    conceded = [m for m in misconceptions if m["id"] in conceded_ids]
     learner_turns = [t for t in transcript if t["role"] == "learner"]
 
     stub = _stub_recap(topic_name, resolved, unresolved, len(learner_turns))
@@ -74,24 +80,30 @@ async def write_session_recap(
         return stub
 
     system = (
-        "You are reviewing a completed teach-back session. A learner taught a deliberately "
-        "confused AI student, and cleared the bar. Write the recap FOR THE LEARNER, in second "
-        "person.\n\n"
+        "You are reviewing a finished teach-back session. A learner taught a deliberately "
+        "confused AI student. Write the recap FOR THE LEARNER, in second person.\n\n"
         "Judge the teaching, not the topic. Do not re-explain the subject — they already have "
         "the lesson. Point at their actual words: which explanation made the confusion go away, "
         "where they had to try twice, what they asserted without justifying. Be specific and "
-        "concrete; a generic 'great job' recap is worthless."
+        "concrete; a generic 'great job' recap is worthless.\n\n"
+        "Some points are listed as CONCEDED: the learner said they didn't know, twice, and the "
+        "student looked those up itself. Never credit the learner for a conceded point — they "
+        "did not teach it. Say plainly that it went unanswered, and be honest overall: if they "
+        "explained very little, the recap says so rather than inventing praise."
     )
     convo = "\n".join(
         f"{'LEARNER' if t['role'] == 'learner' else 'CONFUSED STUDENT'}: {t['content']}"
         for t in transcript
     )
+    still_open = [m for m in unresolved if m["id"] not in conceded_ids]
     resolved_names = ", ".join(m["sub_concept"] for m in resolved) or "none"
-    unresolved_names = ", ".join(m["sub_concept"] for m in unresolved) or "none"
+    conceded_names = ", ".join(m["sub_concept"] for m in conceded) or "none"
+    open_names = ", ".join(m["sub_concept"] for m in still_open) or "none"
     content = (
         f"Topic: {topic_name}\n"
-        f"Misconceptions they resolved: {resolved_names}\n"
-        f"Still open at the end: {unresolved_names}\n\n"
+        f"TAUGHT by the learner: {resolved_names}\n"
+        f"CONCEDED — the learner said they didn't know and the student looked it up: {conceded_names}\n"
+        f"Never reached: {open_names}\n\n"
         f"Full transcript:\n{convo}"
     )
 

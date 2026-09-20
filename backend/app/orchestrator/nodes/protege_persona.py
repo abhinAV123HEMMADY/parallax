@@ -34,7 +34,11 @@ def _stub_question(
 
     if gave_up_on:
         explained = next((m for m in misconceptions if m["id"] == gave_up_on), None)
-        lead = f"That's alright, let's move on — {explained['explanation']}" if explained else "That's alright, let's move on."
+        lead = (
+            f"That's alright — I went and looked this one up myself: {explained['explanation']}"
+            if explained
+            else "That's alright, let's move on."
+        )
         if not open_misconceptions:
             return f"{lead} {_WRAP_UP}"
         return f"{lead} Okay, here's something else I'm stuck on: {open_misconceptions[0]['misconception_prompt']}"
@@ -72,10 +76,12 @@ async def _claude_question(
         explanation = explained["explanation"] if explained else "the underlying idea"
         system += (
             f"\n\nThe tutor has said they don't know twice in a row on this point, so the "
-            f"conversation is stuck. Don't ask again — briefly explain in your own words that "
-            f"you thought about it and it clicked: {explanation}. Then, in the same reply, move "
-            "on to your next open confusion (or, if nothing is left open, say you think you get "
-            "it now and thank them)."
+            f"conversation is stuck. Don't ask again — say plainly that you went and looked it "
+            f"up yourself, then give it: {explanation}. Then, in the same reply, move on to "
+            "your next open confusion (or, if nothing is left open, say so and thank them).\n\n"
+            "Do NOT credit the tutor for this one. They told you they didn't know, so claiming "
+            "their explanation made it click describes a conversation that did not happen, and "
+            "it tells them they taught something they did not."
         )
         if not open_misconceptions:
             system += "\n\nNothing is left open — just deliver the explanation and the thank-you, no question."

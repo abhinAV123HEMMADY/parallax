@@ -117,6 +117,7 @@ async def understanding_scorer_node(state: ProtegeState) -> dict:
     misconceptions = state["misconceptions"]
     checklist = dict(state["checklist"])
     resolved_misconceptions = list(state["resolved_misconceptions"])
+    conceded_misconceptions = list(state.get("conceded_misconceptions") or [])
     transcript = list(state["transcript"]) + [{"role": "learner", "content": learner_turn}]
 
     gave_up_on = None
@@ -133,8 +134,13 @@ async def understanding_scorer_node(state: ProtegeState) -> dict:
         if _consecutive_stuck_count(transcript) >= 2:
             open_misconceptions = [m for m in misconceptions if not checklist.get(m["id"])]
             if open_misconceptions:
+                # Conceded, NOT resolved. Closing it on the checklist is what lets the
+                # conversation move on; counting it as taught would mean "I don't know",
+                # repeated, walks the score to a pass — which is the one thing a teach-back
+                # is supposed to be unable to do.
                 gave_up_on = open_misconceptions[0]["id"]
-                newly_resolved = [gave_up_on]
+                conceded_misconceptions.append(gave_up_on)
+                checklist[gave_up_on] = True
     elif llm_enabled():
         newly_resolved = await _claude_score(learner_turn, misconceptions, checklist, transcript)
     else:
@@ -145,14 +151,19 @@ async def understanding_scorer_node(state: ProtegeState) -> dict:
             checklist[mid] = True
             resolved_misconceptions.append(mid)
 
+    # Scored on what the learner actually taught, not on what has stopped being asked about.
+    # The checklist closes on concession too, so scoring from it credited the persona's own
+    # explanations to the learner.
     total = len(misconceptions) or 1
-    understanding_score = round(sum(1 for v in checklist.values() if v) / total, 3)
+    understanding_score = round(len(set(resolved_misconceptions)) / total, 3)
+    nothing_left_open = all(checklist.get(m["id"]) for m in misconceptions)
 
     return {
         "checklist": checklist,
         "resolved_misconceptions": resolved_misconceptions,
+        "conceded_misconceptions": conceded_misconceptions,
         "understanding_score": understanding_score,
         "transcript": transcript,
-        "status": "completed" if understanding_score >= 1.0 else "active",
+        "status": "completed" if nothing_left_open else "active",
         "gave_up_on": gave_up_on,
     }

@@ -12,7 +12,7 @@ from app.config import settings
 from app.database import get_db
 from app.llm import llm_enabled
 from app.mastery.service import recompute_mastery
-from app.models import ProtegeRecap, ProtegeSession, QnaPost, Topic
+from app.models import ProtegeConcession, ProtegeRecap, ProtegeSession, QnaPost, Topic
 from app.moderation.service import moderate_text
 from app.orchestrator.nodes.misconception_generator import generate_misconceptions, is_generic_set
 from app.orchestrator.nodes.protege_persona import protege_persona_node
@@ -88,6 +88,7 @@ async def _write_recap(db, session, topic, misconceptions: list[dict], merged: d
             transcript=merged["transcript"],
             misconceptions=misconceptions,
             resolved_ids=merged["resolved_misconceptions"],
+            conceded_ids=merged.get("conceded_misconceptions") or [],
         )
     except Exception:
         log.exception("recap generation failed for session %s", session.id)
@@ -135,6 +136,7 @@ async def start_protege_session(req: ProtegeStartRequest, db: AsyncSession = Dep
         "learner_turn": None,
         "understanding_score": 0.0,
         "resolved_misconceptions": [],
+        "conceded_misconceptions": [],
         "persona_message": "",
         "status": "active",
         "gave_up_on": None,
@@ -180,7 +182,14 @@ async def submit_protege_turn(req: ProtegeTurnRequest, db: AsyncSession = Depend
 
     topic = await db.get(Topic, session.topic_id)
     misconceptions = topic.common_misconceptions
-    checklist = {m["id"]: m["id"] in session.misconceptions_resolved for m in misconceptions}
+    # A misconception is closed if the learner taught it OR the persona conceded it; only the
+    # first kind scores, so the two lists have to be loaded separately rather than merged.
+    conceded_rows = await db.execute(
+        select(ProtegeConcession.misconception_id).where(ProtegeConcession.session_id == session.id)
+    )
+    conceded = list(conceded_rows.scalars().all())
+    closed = set(session.misconceptions_resolved) | set(conceded)
+    checklist = {m["id"]: m["id"] in closed for m in misconceptions}
 
     state = {
         "topic_id": topic.id,
@@ -191,6 +200,7 @@ async def submit_protege_turn(req: ProtegeTurnRequest, db: AsyncSession = Depend
         "learner_turn": req.learner_explanation,
         "understanding_score": session.understanding_score,
         "resolved_misconceptions": list(session.misconceptions_resolved),
+        "conceded_misconceptions": conceded,
         "persona_message": "",
         "status": "active",
         "gave_up_on": None,
@@ -219,11 +229,19 @@ async def submit_protege_turn(req: ProtegeTurnRequest, db: AsyncSession = Depend
     session.transcript_json = merged["transcript"]
     session.understanding_score = merged["understanding_score"]
     session.misconceptions_resolved = merged["resolved_misconceptions"]
+
+    newly_conceded = set(merged.get("conceded_misconceptions") or []) - set(conceded)
+    for mid in newly_conceded:
+        db.add(ProtegeConcession(id=str(uuid.uuid4()), session_id=session.id, misconception_id=mid))
+
     if merged["understanding_score"] >= UNDERSTANDING_THRESHOLD or merged["status"] == "completed":
         session.status = "completed"
-        # A completed teach-back is a real mastery signal — fold it in now (Section 9.5).
         await db.flush()
-        await recompute_mastery(db, session.learner_id, session.topic_id)
+        # Mastery moves only on what the learner actually taught. A session that ran out of
+        # open misconceptions because the persona conceded them is finished, not passed, and
+        # folding it into mastery would reward saying "I don't know" until nothing is left.
+        if merged["understanding_score"] >= UNDERSTANDING_THRESHOLD:
+            await recompute_mastery(db, session.learner_id, session.topic_id)
         await _write_recap(db, session, topic, misconceptions, merged)
     await db.commit()
 

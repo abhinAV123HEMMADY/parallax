@@ -9,7 +9,8 @@ class ProtegeState(TypedDict):
     transcript: list[dict]  # [{role: "persona"|"learner", content}]
     learner_turn: str | None
     understanding_score: float
-    resolved_misconceptions: list[str]
+    resolved_misconceptions: list[str]  # taught by the learner — the only thing that scores
+    conceded_misconceptions: list[str]  # the persona explained these itself after two punts
     persona_message: str
     status: str  # active|completed
     gave_up_on: str | None  # misconception id the persona just explained itself, if any, this turn
