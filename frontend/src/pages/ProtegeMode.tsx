@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { getProtegeRecap, publishProtegeExplanation, sendProtegeTurn, startProtege } from "../api/rest";
+import { getProtegeRecap, sendProtegeTurn, startProtege } from "../api/rest";
 import { ArrowIcon, ChatIcon, CheckIcon } from "../components/Icons";
 import MathText from "../components/MathText";
 import { useLearner } from "../LearnerContext";
@@ -15,10 +15,9 @@ export default function ProtegeMode() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [understandingScore, setUnderstandingScore] = useState(0);
-  const [status, setStatus] = useState<"idle" | "active" | "completed" | "published">("idle");
+  const [status, setStatus] = useState<"idle" | "active" | "completed">("idle");
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [publishStatus, setPublishStatus] = useState<string | null>(null);
   const [recap, setRecap] = useState<ProtegeRecap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
@@ -40,7 +39,6 @@ export default function ProtegeMode() {
       setChecklist(res.checklist);
       setUnderstandingScore(res.understanding_score);
       setStatus("active");
-      setPublishStatus(null);
       scrollToEnd();
     } catch {
       setError("Couldn't reach the backend — make sure it's running, then try again.");
@@ -70,11 +68,12 @@ export default function ProtegeMode() {
       setMessages((prev) => [...prev, { role: "persona", content: res.persona_message }]);
       setChecklist(res.checklist);
       setUnderstandingScore(res.understanding_score);
-      setStatus(res.status);
+      const done = res.status !== "active";
+      setStatus(done ? "completed" : "active");
       scrollToEnd();
       // The recap is written server-side on the completing turn; a missing one shouldn't
       // surface as an error, since the session itself succeeded either way.
-      if (res.status === "completed") {
+      if (done) {
         getProtegeRecap(sessionId).then(setRecap).catch(() => setRecap(null));
       }
     } catch {
@@ -84,23 +83,8 @@ export default function ProtegeMode() {
     }
   };
 
-  const publish = async () => {
-    if (!sessionId) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await publishProtegeExplanation(sessionId);
-      setPublishStatus(res.moderation_status);
-      setStatus("published");
-    } catch {
-      setError("Couldn't publish — check the backend and try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const coveredCount = checklist.filter((c) => c.covered).length;
-  const canPublish = status === "completed" && understandingScore >= UNDERSTANDING_THRESHOLD;
+  const clearedThreshold = understandingScore >= UNDERSTANDING_THRESHOLD;
 
   return (
     <div>
@@ -184,17 +168,17 @@ export default function ProtegeMode() {
               <div ref={threadEndRef} />
             </div>
 
-            {status !== "published" && (
+            {status === "active" && (
               <div className="stack">
                 <textarea
                   rows={3}
                   placeholder="Explain it back to your confused peer…"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  disabled={busy || status === "completed"}
+                  disabled={busy}
                   style={{ resize: "none" }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && input.trim() && !busy && status === "active") {
+                    if (e.key === "Enter" && !e.shiftKey && input.trim() && !busy) {
                       e.preventDefault();
                       send();
                     }
@@ -203,7 +187,7 @@ export default function ProtegeMode() {
                 <div className="row">
                   <button
                     className="secondary"
-                    disabled={busy || status !== "active"}
+                    disabled={busy}
                     onClick={() => send("I don't know")}
                     title="Get a hint on the current misconception instead of guessing"
                   >
@@ -211,7 +195,7 @@ export default function ProtegeMode() {
                   </button>
                   <button
                     style={{ flex: 1 }}
-                    disabled={busy || !input.trim() || status !== "active"}
+                    disabled={busy || !input.trim()}
                     onClick={() => send()}
                   >
                     {busy ? "Thinking…" : "Send explanation"}
@@ -221,7 +205,7 @@ export default function ProtegeMode() {
               </div>
             )}
 
-            {recap && (status === "completed" || status === "published") && (
+            {recap && status === "completed" && (
               <div className="card animate-in" style={{ marginTop: 14, marginBottom: 0 }}>
                 <span className="eyebrow">Session recap</span>
                 <h3 style={{ margin: "4px 0 0" }}>
@@ -271,34 +255,15 @@ export default function ProtegeMode() {
               <div className="callout lav" style={{ marginTop: 14, marginBottom: 0 }}>
                 <span className="eyebrow">Session complete</span>
                 <p style={{ margin: "6px 0 0" }}>
-                  {canPublish
-                    ? "Your explanation cleared the understanding threshold — publish it to the Q&A feed so other learners struggling with the same misconceptions can see it."
+                  {clearedThreshold
+                    ? "You cleared the understanding threshold — the recap above is yours to keep, right here on the Teach page."
                     : "Session ended before every misconception was resolved — start a new session to try again."}
                 </p>
                 <div className="row" style={{ marginTop: 12 }}>
-                  {canPublish && (
-                    <button disabled={busy} onClick={publish}>
-                      {busy ? "Publishing…" : "Publish this explanation"}
-                    </button>
-                  )}
                   <button className="secondary" disabled={busy} onClick={restart}>
                     New session
                   </button>
                 </div>
-              </div>
-            )}
-
-            {status === "published" && (
-              <div className="card" style={{ marginTop: 14, marginBottom: 0 }}>
-                <span className="tag on_track">
-                  <CheckIcon size={13} /> Moderation: {publishStatus}
-                </span>
-                <p className="faint" style={{ marginTop: 10, marginBottom: 12 }}>
-                  Posted to the {topicName} Q&A feed as a peer explanation.
-                </p>
-                <button className="secondary" disabled={busy} onClick={restart}>
-                  New session
-                </button>
               </div>
             )}
           </div>

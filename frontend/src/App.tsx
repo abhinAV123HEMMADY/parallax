@@ -3,11 +3,10 @@ import { NavLink, Route, HashRouter as Router, Routes, useLocation } from "react
 import { createUser, listUsers } from "./api/rest";
 import { LearnerProvider, useLearner } from "./LearnerContext";
 import { ThemeProvider, useTheme } from "./theme";
-import { ChatIcon, CloseIcon, LearnIcon, MapIcon, MoonIcon, PeerIcon, SunIcon } from "./components/Icons";
+import { ChatIcon, CloseIcon, LearnIcon, MapIcon, MoonIcon, SunIcon } from "./components/Icons";
 import LearningPipeline from "./pages/LearningPipeline";
 import MasteryMap from "./pages/MasteryMap";
 import NotesExport from "./pages/NotesExport";
-import PeerFeed from "./pages/PeerFeed";
 import ProtegeMode from "./pages/ProtegeMode";
 import type { MentraUser } from "./types";
 
@@ -161,7 +160,6 @@ function AnimatedRoutes() {
         <Route path="/" element={<LearningPipeline />} />
         <Route path="/map" element={<MasteryMap />} />
         <Route path="/protege" element={<ProtegeMode />} />
-        <Route path="/peer" element={<PeerFeed />} />
         {/* Not tabs — the Chrome extension opens these directly to hand off a PDF export. */}
         <Route path="/notes/export/topic/:topicId" element={<NotesExport />} />
         <Route path="/notes/export/:videoId" element={<NotesExport />} />
@@ -176,7 +174,6 @@ const TABS = [
   { to: "/", end: true, label: "Learn", Icon: LearnIcon },
   { to: "/map", end: false, label: "Mastery", Icon: MapIcon },
   { to: "/protege", end: false, label: "Teach", Icon: ChatIcon },
-  { to: "/peer", end: false, label: "Squads", Icon: PeerIcon },
 ];
 
 export default function App() {

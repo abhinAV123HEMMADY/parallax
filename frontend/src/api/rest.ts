@@ -4,8 +4,6 @@ import type {
   MentraUser,
   ProtegeRecap,
   ProtegeTurnResult,
-  SquadProposal,
-  StruggleFeedItem,
   TopicNotePack,
   VideoNote,
   VideoNotePack,
@@ -82,24 +80,8 @@ export function getExamPlan(learnerId: string, daysUntilExam: number): Promise<E
   });
 }
 
-export function getStruggleFeed(userId: string): Promise<StruggleFeedItem[]> {
-  return getJson<StruggleFeedItem[]>(`/peer/feed/${userId}`);
-}
-
-export function getSquadProposals(topicId: string): Promise<SquadProposal[]> {
-  return getJson<SquadProposal[]>(`/peer/squads/${topicId}`);
-}
-
 export function getMasteryGraph(userId: string): Promise<MasteryGraph> {
   return getJson<MasteryGraph>(`/mastery/graph/${userId}`);
-}
-
-export function postQna(topicId: string, authorId: string, body: string) {
-  return postJson<{ id: string; moderation_status: string }>("/peer/qna", {
-    topic_id: topicId,
-    author_id: authorId,
-    body,
-  });
 }
 
 export function startProtege(topicName: string, learnerId: string): Promise<ProtegeTurnResult> {
@@ -111,10 +93,6 @@ export function sendProtegeTurn(sessionId: string, learnerExplanation: string): 
     session_id: sessionId,
     learner_explanation: learnerExplanation,
   });
-}
-
-export function publishProtegeExplanation(sessionId: string) {
-  return postJson<{ id: string; moderation_status: string }>("/protege/publish", { session_id: sessionId });
 }
 
 export function getProtegeRecap(sessionId: string): Promise<ProtegeRecap> {

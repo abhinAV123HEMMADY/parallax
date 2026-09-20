@@ -261,10 +261,11 @@ make extension          # installs deps and builds extension/dist
    mark it recalled or missed — this calls `/learn/confidence`, which runs the real FSRS update
    and reschedules the card's due date.
 
-6. **Struggle feed + study squad.** Go to Peer Feed as `u_amy` — you'll see struggle signals
-   from connected learners `u_ben` and `u_cara`, both seeded with a "derivatives" quiz-miss
-   event. Because all three are mutually connected and struggling on the same topic, a study
-   squad is proposed (`propose_squads_for_topic`, Section 7.3).
+6. **Struggle feed + study squad (API only).** The app no longer ships a Squads tab, but the
+   engine still runs: `GET /peer/feed/u_amy` returns struggle signals from connected learners
+   `u_ben` and `u_cara`, both seeded with a "derivatives" quiz-miss event. Because all three are
+   mutually connected and struggling on the same topic, `GET /peer/squads/derivatives` proposes a
+   study squad (`propose_squads_for_topic`, Section 7.3).
 
 7. **Watch & Note.** With the extension loaded and `u_amy` selected, open
    `https://www.youtube.com/watch?v=riXcZT2ICjA` (a seeded Khan Academy limits lecture). The panel

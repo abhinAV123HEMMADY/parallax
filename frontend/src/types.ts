@@ -97,19 +97,6 @@ export interface LearningSessionData {
   done: boolean;
 }
 
-export interface StruggleFeedItem {
-  user_id: string;
-  topic_id: string;
-  topic_name: string;
-  relative_signal: "struggling" | "on_track";
-}
-
-export interface SquadProposal {
-  id: string;
-  topic_id: string;
-  member_ids: string[];
-}
-
 export interface ChecklistItem {
   id: string;
   sub_concept: string;

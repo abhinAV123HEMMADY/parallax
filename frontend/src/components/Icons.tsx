@@ -24,17 +24,6 @@ export function LearnIcon({ size = 22, className }: IconProps) {
   );
 }
 
-export function PeerIcon({ size = 22, className }: IconProps) {
-  return (
-    <svg {...base(size, className)}>
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
-      <path d="M16 5.5a3 3 0 0 1 0 5.8" />
-      <path d="M17 14.4A5.5 5.5 0 0 1 20.5 20" />
-    </svg>
-  );
-}
-
 export function MapIcon({ size = 22, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
