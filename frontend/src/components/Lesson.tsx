@@ -1,3 +1,4 @@
+import MathText from "./MathText";
 import ProgressRing from "./ProgressRing";
 import type { LessonContent } from "../types";
 
@@ -17,16 +18,20 @@ export default function Lesson({
           {lesson.topic_name}
         </span>
         <h2 style={{ margin: "0 0 10px" }}>Conceptual Overview</h2>
-        <p style={{ margin: 0 }}>{lesson.overview}</p>
+        <p style={{ margin: 0 }}>
+          <MathText>{lesson.overview}</MathText>
+        </p>
 
         {lesson.worked_examples?.length > 0 && (
           <div style={{ marginTop: 10 }}>
             {lesson.worked_examples.map((ex, i) => (
               <div key={i} className="example">
                 <span className="pill-label">{ex.difficulty}</span>
-                <strong style={{ display: "block", marginBottom: 5 }}>{ex.prompt}</strong>
+                <strong style={{ display: "block", marginBottom: 5 }}>
+                  <MathText>{ex.prompt}</MathText>
+                </strong>
                 <p className="muted" style={{ margin: 0 }}>
-                  {ex.solution}
+                  <MathText>{ex.solution}</MathText>
                 </p>
               </div>
             ))}
@@ -44,7 +49,7 @@ export default function Lesson({
                     ·
                   </span>
                   <span className="muted" style={{ flex: 1, fontSize: 14 }}>
-                    {m}
+                    <MathText>{m}</MathText>
                   </span>
                 </div>
               ))}

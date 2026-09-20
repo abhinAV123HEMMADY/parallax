@@ -20,6 +20,18 @@ from app.config import settings
 
 MODEL = "gpt-4o"
 
+# Appended to the prompt of every node whose output can contain math. The frontend renders
+# these delimiters with KaTeX; anything outside them is shown as written. Without this the
+# models mixed bare "x^3" with occasional \(x^n\), so the same page displayed some expressions
+# typeset and others as raw carets and backslashes.
+MATH_NOTATION = (
+    "\n\nWrite ALL mathematics as LaTeX: inline as \\( ... \\), and a standalone equation as "
+    "\\[ ... \\]. That covers every variable, exponent, fraction, derivative and expression — "
+    "\\(x^3\\), not x^3; \\(\\frac{dy}{dx}\\), not dy/dx; \\(3x^2\\), not 3x^2. Never leave a "
+    "caret, underscore or backslash command outside delimiters, and do not wrap ordinary prose "
+    "in them."
+)
+
 log = logging.getLogger(__name__)
 
 

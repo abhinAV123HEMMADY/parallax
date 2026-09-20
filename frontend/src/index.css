@@ -1399,3 +1399,26 @@ button.sm {
     transition: none;
   }
 }
+
+/* KaTeX: inline math must not stretch the line, display math must not force a horizontal
+   page scroll on a phone — it scrolls inside its own box instead. */
+.math-inline {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.math-display {
+  display: block;
+  margin: 10px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex {
+  font-size: 1.02em;
+}
+
+.bubble .katex,
+.example .katex {
+  font-size: 1em;
+}

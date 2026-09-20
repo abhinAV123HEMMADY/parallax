@@ -8,7 +8,7 @@ topic's open misconceptions in order — matching every other agent node's demo-
 convention.
 """
 
-from app.llm import forced_tool_call, llm_enabled
+from app.llm import MATH_NOTATION, forced_tool_call, llm_enabled
 from app.orchestrator.nodes.understanding_scorer import _is_stuck, _is_unusable
 from app.orchestrator.protege_state import ProtegeState
 
@@ -105,7 +105,7 @@ async def _claude_question(
 
     convo = "\n".join(f"{t['role']}: {t['content']}" for t in transcript)
     content = f"Conversation so far:\n{convo}\n\nRespond as the confused student."
-    result = await forced_tool_call(system, content, _RESPOND_TOOL, max_tokens=250)
+    result = await forced_tool_call(system + MATH_NOTATION, content, _RESPOND_TOOL, max_tokens=250)
     return result["message"].strip() if result else None
 
 

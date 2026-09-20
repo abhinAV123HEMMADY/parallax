@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { submitQuizAnswer } from "../api/rest";
 import { ArrowIcon, PlayIcon } from "./Icons";
+import MathText from "./MathText";
 import type { QuizQuestion } from "../types";
 
 const MODALITY_ORDER = ["analogy", "diagram", "video"] as const;
@@ -34,7 +35,7 @@ function Reexplanation({ question }: { question: QuizQuestion }) {
               </a>
             ) : (
               <span style={{ flex: 1, whiteSpace: "pre-wrap" }}>
-                {String(question.reexplanations?.[modality] ?? "")}
+                <MathText>{String(question.reexplanations?.[modality] ?? "")}</MathText>
               </span>
             )}
           </div>
@@ -96,7 +97,9 @@ function QuestionBlock({
       <span className="tag lav" style={{ marginBottom: 12, display: "inline-flex" }}>
         Question {index + 1} of {total}
       </span>
-      <h3 style={{ margin: "0 0 14px" }}>{q.question}</h3>
+      <h3 style={{ margin: "0 0 14px" }}>
+        <MathText>{q.question}</MathText>
+      </h3>
 
       {!revealed ? (
         <button className="secondary block" onClick={() => setRevealed(true)}>
@@ -105,7 +108,9 @@ function QuestionBlock({
       ) : (
         <>
           <div className="callout lav" style={{ marginBottom: 16 }}>
-            <p style={{ margin: 0 }}>{q.answer}</p>
+            <p style={{ margin: 0 }}>
+              <MathText>{q.answer}</MathText>
+            </p>
           </div>
 
           <span className="eyebrow">Grade yourself honestly</span>

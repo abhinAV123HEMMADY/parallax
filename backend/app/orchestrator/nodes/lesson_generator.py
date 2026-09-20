@@ -7,7 +7,7 @@ photo, the localized error is passed as context so the lesson attacks the learne
 mistake rather than teaching the topic generically. Stub fallback keeps the same shape.
 """
 
-from app.llm import forced_tool_call
+from app.llm import MATH_NOTATION, forced_tool_call
 from app.orchestrator.state import LearningState
 
 _LESSON_TOOL = {
@@ -51,7 +51,7 @@ _SYSTEM = (
     "'in this lesson we will' framing — teach directly. Worked examples must be fully solved "
     "with real numbers/specifics, steps separated by newlines. Common mistakes must be "
     "mistakes learners actually make on this topic, stated specifically."
-)
+) + MATH_NOTATION
 
 
 def _stub_lesson(topic_name: str) -> dict:

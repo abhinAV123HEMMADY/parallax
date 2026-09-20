@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { getProtegeRecap, publishProtegeExplanation, sendProtegeTurn, startProtege } from "../api/rest";
 import { ArrowIcon, ChatIcon, CheckIcon } from "../components/Icons";
+import MathText from "../components/MathText";
 import { useLearner } from "../LearnerContext";
 import type { ChatMessage, ChecklistItem, ProtegeRecap } from "../types";
 
@@ -177,7 +178,7 @@ export default function ProtegeMode() {
             <div className="chat-thread">
               {messages.map((m, i) => (
                 <div key={i} className={`bubble ${m.role}`}>
-                  {m.content}
+                  <MathText>{m.content}</MathText>
                 </div>
               ))}
               <div ref={threadEndRef} />
@@ -230,7 +231,9 @@ export default function ProtegeMode() {
                   {recap.turn_count} explanation{recap.turn_count === 1 ? "" : "s"} ·{" "}
                   {Math.round(recap.understanding_score * 100)}% understanding
                 </p>
-                <p style={{ marginTop: 0 }}>{recap.summary}</p>
+                <p style={{ marginTop: 0 }}>
+                  <MathText>{recap.summary}</MathText>
+                </p>
 
                 {recap.taught_well.length > 0 && (
                   <>

@@ -8,7 +8,7 @@ then diagram, then video. Analogies are cheapest and often enough; diagrams help
 learners; video is the most expensive fallback, so it's tried last.
 """
 
-from app.llm import forced_tool_call
+from app.llm import MATH_NOTATION, forced_tool_call
 from app.orchestrator.state import LearningState
 
 MODALITY_ORDER = ["analogy", "diagram", "video"]
@@ -92,7 +92,7 @@ async def quiz_reexplain_node(state: LearningState) -> dict:
     if mistakes:
         prompt += "\n\nCommon mistakes covered:\n" + "\n".join(f"- {m}" for m in mistakes)
 
-    generated = await forced_tool_call(_SYSTEM, prompt, _QUIZ_TOOL)
+    generated = await forced_tool_call(_SYSTEM + MATH_NOTATION, prompt, _QUIZ_TOOL)
     if generated is None:
         return {"quiz": _stub_quiz(topic_name)}
 
