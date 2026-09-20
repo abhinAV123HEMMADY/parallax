@@ -9,7 +9,7 @@ convention.
 """
 
 from app.llm import forced_tool_call, llm_enabled
-from app.orchestrator.nodes.understanding_scorer import _is_stuck
+from app.orchestrator.nodes.understanding_scorer import _is_stuck, _is_unusable
 from app.orchestrator.protege_state import ProtegeState
 
 _WRAP_UP = "Ohh, okay — I think I actually get it now. Thanks for walking me through it!"
@@ -103,6 +103,20 @@ async def _claude_question(
     return result["message"].strip() if result else None
 
 
+def _reprompt(open_misconceptions: list[dict]) -> str:
+    """Response to an unusable turn. Deterministic on purpose: there is nothing to respond to,
+    so a generated reply would be inventing a reaction to input the learner never gave — which
+    is what made a stray keystroke read as a scripted hint. Restating the open question is the
+    honest move, and it cannot leak.
+    """
+    if not open_misconceptions:
+        return "Sorry, I didn't catch that — could you say a bit more?"
+    return (
+        "Sorry, I didn't catch that — could you walk me through it? I'm still stuck on this: "
+        f"{open_misconceptions[0]['misconception_prompt']}"
+    )
+
+
 async def protege_persona_node(state: ProtegeState) -> dict:
     misconceptions = state["misconceptions"]
     checklist = state["checklist"]
@@ -110,7 +124,14 @@ async def protege_persona_node(state: ProtegeState) -> dict:
     gave_up_on = state.get("gave_up_on")
 
     last_turn = transcript[-1] if transcript else None
-    stuck = bool(last_turn and last_turn["role"] == "learner" and _is_stuck(last_turn["content"]))
+    last_is_learner = bool(last_turn and last_turn["role"] == "learner")
+    stuck = bool(last_is_learner and _is_stuck(last_turn["content"]))
+
+    if last_is_learner and _is_unusable(last_turn["content"]):
+        open_misconceptions = [m for m in misconceptions if not checklist.get(m["id"])]
+        persona_message = _reprompt(open_misconceptions)
+        transcript.append({"role": "persona", "content": persona_message})
+        return {"persona_message": persona_message, "transcript": transcript}
 
     persona_message = None
     if llm_enabled():

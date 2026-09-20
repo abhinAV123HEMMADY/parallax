@@ -12,18 +12,40 @@ from app.orchestrator.protege_state import ProtegeState
 
 _STUCK_PHRASES = ["i don't know", "i dont know", "idk", "not sure", "no idea", "no clue", "i give up"]
 
+# Long enough to be a sentence someone meant to send. Below this the turn is a stray keystroke
+# or a half-finished thought, not an explanation and not an admission of being stuck.
+_MIN_EXPLANATION_CHARS = 12
+
 
 def _is_stuck(text: str) -> bool:
-    """A punt ("I don't know") isn't an explanation — score it as resolving nothing rather
-    than risking a keyword false-positive on a guess, and skip the Claude call entirely.
+    """A deliberate punt ("I don't know") — score it as resolving nothing rather than risking a
+    keyword false-positive on a guess, and skip the Claude call entirely.
+
+    Deliberately phrase-only. Treating any short string as a punt made a stray "s" indis-
+    tinguishable from "I give up", which sent the persona down the scripted hint branch and
+    answered a question the learner had not actually declined to answer.
     """
     lowered = text.strip().lower()
-    return len(lowered) < 4 or any(phrase in lowered for phrase in _STUCK_PHRASES)
+    return any(phrase in lowered for phrase in _STUCK_PHRASES)
+
+
+def _is_unusable(text: str) -> bool:
+    """Too short to be an explanation, and not a punt — a typo, a stray key, an early send.
+
+    Distinct from stuck on purpose: being stuck earns a hint, whereas this earns "say more".
+    Hinting here would resolve a misconception the learner never got a real turn at.
+    """
+    lowered = text.strip().lower()
+    return not _is_stuck(lowered) and len(lowered) < _MIN_EXPLANATION_CHARS
 
 
 def _consecutive_stuck_count(transcript: list[dict]) -> int:
     """How many learner turns in a row (most recent first) have been a punt — used to stop
     hinting and just explain-and-move-on rather than looping the same question forever.
+
+    An unusable turn neither continues nor breaks the run: it is not a punt, so it must not
+    push the learner toward give-up, and it is not an explanation either, so a typo between
+    two "I don't know"s should not reset the count and restart the loop.
     """
     count = 0
     for turn in reversed(transcript):
@@ -31,6 +53,8 @@ def _consecutive_stuck_count(transcript: list[dict]) -> int:
             continue
         if _is_stuck(turn["content"]):
             count += 1
+        elif _is_unusable(turn["content"]):
+            continue
         else:
             break
     return count
@@ -98,7 +122,11 @@ async def understanding_scorer_node(state: ProtegeState) -> dict:
     gave_up_on = None
     newly_resolved: list[str] = []
 
-    if _is_stuck(learner_turn):
+    if _is_unusable(learner_turn):
+        # Nothing to grade and nothing to hint at — the persona asks for a real explanation
+        # and the same misconception stays open.
+        pass
+    elif _is_stuck(learner_turn):
         # First punt gets a hint (handled by the persona node); a second punt in a row on
         # the same open misconception means the conversation is stalled — explain it and
         # move on instead of repeating the same question forever.

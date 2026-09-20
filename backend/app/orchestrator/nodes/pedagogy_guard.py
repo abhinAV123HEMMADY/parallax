@@ -53,10 +53,16 @@ async def _judge(message: str, open_misconceptions: list[dict]) -> dict | None:
         "You audit a tutoring transcript for answer leakage. The speaker is an AI playing a "
         "confused student; the human is teaching it. The point of the exercise is that the "
         "human reaches each idea themselves.\n\n"
-        "Flag the message ONLY if it states the resolution of one of the listed open "
-        "misconceptions — i.e. a learner reading it no longer has to work that idea out. "
-        "Do NOT flag: questions, expressions of confusion, partial hints, restatements of "
-        "what the human already said, or anything about a concept not on the list."
+        "Flag the message if a learner reading it no longer has to work out one of the listed "
+        "open misconceptions for themselves.\n\n"
+        "Hedging does not make it safe. 'Maybe it doesn't always work, like with division by "
+        "zero — try simplifying instead' hands over the answer just as much as asserting it; "
+        "phrasing an answer as a tentative suggestion or as part of a question still counts. "
+        "Naming the mechanism, the exception, or the technique that resolves the confusion is "
+        "a leak.\n\n"
+        "Do NOT flag: pure questions that add no new information, expressions of confusion, "
+        "restatements of what the human already said, a nudge toward WHERE to look that does "
+        "not say what will be found there, or anything about a concept not on the list."
     )
     listed = "\n".join(
         f'- {m["sub_concept"]}: resolving it means conveying "{m.get("explanation", m["misconception_prompt"])}"'
