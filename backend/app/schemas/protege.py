@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -29,3 +31,15 @@ class ProtegeTurnResult(BaseModel):
     checklist: list[ChecklistItem]
     resolved_misconceptions: list[str]
     status: str  # active|completed
+
+
+class ProtegeRecapResult(BaseModel):
+    session_id: str
+    topic_id: str
+    topic_name: str
+    summary: str
+    taught_well: list[str]
+    still_shaky: list[str]
+    understanding_score: float
+    turn_count: int
+    created_at: datetime

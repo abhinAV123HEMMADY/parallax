@@ -9,7 +9,7 @@ generating an explanation rather than recognizing a correct option.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, DateTime, Float, ForeignKey, JSON, String
+from sqlalchemy import ARRAY, DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -25,4 +25,26 @@ class ProtegeSession(Base):
     understanding_score: Mapped[float] = mapped_column(Float, default=0.0)
     misconceptions_resolved: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
     status: Mapped[str] = mapped_column(String, default="active")  # active|completed|published
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ProtegeRecap(Base):
+    """A finished session's recap, written once when the session clears the threshold.
+
+    Separate table rather than columns on ProtegeSession because the schema is created with
+    Base.metadata.create_all, which adds missing tables but never missing columns — a new
+    column would silently not exist on any database that already has the old table.
+    """
+
+    __tablename__ = "protege_recaps"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id: Mapped[str] = mapped_column(String, ForeignKey("protege_sessions.id"), unique=True)
+    learner_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+    topic_id: Mapped[str] = mapped_column(String, ForeignKey("topics.id"))
+    summary: Mapped[str] = mapped_column(String)
+    taught_well: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    still_shaky: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    understanding_score: Mapped[float] = mapped_column(Float, default=0.0)
+    turn_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

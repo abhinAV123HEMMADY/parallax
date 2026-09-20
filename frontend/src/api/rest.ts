@@ -2,6 +2,7 @@ import type {
   ExamPlan,
   MasteryGraph,
   MentraUser,
+  ProtegeRecap,
   ProtegeTurnResult,
   SquadProposal,
   StruggleFeedItem,
@@ -114,6 +115,10 @@ export function sendProtegeTurn(sessionId: string, learnerExplanation: string): 
 
 export function publishProtegeExplanation(sessionId: string) {
   return postJson<{ id: string; moderation_status: string }>("/protege/publish", { session_id: sessionId });
+}
+
+export function getProtegeRecap(sessionId: string): Promise<ProtegeRecap> {
+  return getJson<ProtegeRecap>(`/protege/${sessionId}/recap`);
 }
 
 // --- Video notes ---

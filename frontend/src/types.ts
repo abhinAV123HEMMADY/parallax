@@ -126,6 +126,18 @@ export interface ProtegeTurnResult {
   status: "active" | "completed" | "published";
 }
 
+export interface ProtegeRecap {
+  session_id: string;
+  topic_id: string;
+  topic_name: string;
+  summary: string;
+  taught_well: string[];
+  still_shaky: string[];
+  understanding_score: number;
+  turn_count: number;
+  created_at: string;
+}
+
 export interface ChatMessage {
   role: "persona" | "learner";
   content: string;

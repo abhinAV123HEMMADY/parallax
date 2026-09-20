@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { publishProtegeExplanation, sendProtegeTurn, startProtege } from "../api/rest";
+import { getProtegeRecap, publishProtegeExplanation, sendProtegeTurn, startProtege } from "../api/rest";
 import { ArrowIcon, ChatIcon, CheckIcon } from "../components/Icons";
 import { useLearner } from "../LearnerContext";
-import type { ChatMessage, ChecklistItem } from "../types";
+import type { ChatMessage, ChecklistItem, ProtegeRecap } from "../types";
 
 const UNDERSTANDING_THRESHOLD = 0.75;
 
@@ -18,6 +18,7 @@ export default function ProtegeMode() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [publishStatus, setPublishStatus] = useState<string | null>(null);
+  const [recap, setRecap] = useState<ProtegeRecap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,6 +52,7 @@ export default function ProtegeMode() {
     setSessionId(null);
     setStatus("idle");
     setMessages([]);
+    setRecap(null);
     setError(null);
   };
 
@@ -69,6 +71,11 @@ export default function ProtegeMode() {
       setUnderstandingScore(res.understanding_score);
       setStatus(res.status);
       scrollToEnd();
+      // The recap is written server-side on the completing turn; a missing one shouldn't
+      // surface as an error, since the session itself succeeded either way.
+      if (res.status === "completed") {
+        getProtegeRecap(sessionId).then(setRecap).catch(() => setRecap(null));
+      }
     } catch {
       setError("Couldn't reach the backend — your explanation wasn't scored. Try again.");
     } finally {
@@ -210,6 +217,50 @@ export default function ProtegeMode() {
                     {!busy && <ArrowIcon size={17} />}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {recap && (status === "completed" || status === "published") && (
+              <div className="card animate-in" style={{ marginTop: 14, marginBottom: 0 }}>
+                <span className="eyebrow">Session recap</span>
+                <h3 style={{ margin: "4px 0 0" }}>
+                  How you taught {recap.topic_name}
+                </h3>
+                <p className="faint" style={{ margin: "4px 0 10px" }}>
+                  {recap.turn_count} explanation{recap.turn_count === 1 ? "" : "s"} ·{" "}
+                  {Math.round(recap.understanding_score * 100)}% understanding
+                </p>
+                <p style={{ marginTop: 0 }}>{recap.summary}</p>
+
+                {recap.taught_well.length > 0 && (
+                  <>
+                    <div className="section-head">
+                      <h3>Landed well</h3>
+                    </div>
+                    <div className="chip-row">
+                      {recap.taught_well.map((x) => (
+                        <span key={x} className="tag on_track">
+                          <CheckIcon size={12} /> {x}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {recap.still_shaky.length > 0 && (
+                  <>
+                    <div className="section-head">
+                      <h3>Worth revisiting</h3>
+                    </div>
+                    <div className="chip-row">
+                      {recap.still_shaky.map((x) => (
+                        <span key={x} className="tag">
+                          {x}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

@@ -1,22 +1,34 @@
 import json
+import logging
 import re
 import uuid
 
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.llm import llm_enabled
 from app.mastery.service import recompute_mastery
-from app.models import ProtegeSession, QnaPost, Topic
+from app.models import ProtegeRecap, ProtegeSession, QnaPost, Topic
 from app.moderation.service import moderate_text
 from app.orchestrator.nodes.misconception_generator import generate_misconceptions, is_generic_set
 from app.orchestrator.nodes.protege_persona import protege_persona_node
+from app.orchestrator.nodes.session_recap import write_session_recap
 from app.orchestrator.protege_graph import protege_graph
 from app.realtime import channel_name
-from app.schemas.protege import ChecklistItem, ProtegePublishRequest, ProtegeStartRequest, ProtegeTurnRequest, ProtegeTurnResult
+from app.schemas.protege import (
+    ChecklistItem,
+    ProtegePublishRequest,
+    ProtegeRecapResult,
+    ProtegeStartRequest,
+    ProtegeTurnRequest,
+    ProtegeTurnResult,
+)
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/protege", tags=["protege"])
 
@@ -55,6 +67,45 @@ def _checklist_items(misconceptions: list[dict], checklist: dict[str, bool]) -> 
         ChecklistItem(id=m["id"], sub_concept=m["sub_concept"], covered=checklist.get(m["id"], False))
         for m in misconceptions
     ]
+
+
+async def _write_recap(db, session, topic, misconceptions: list[dict], merged: dict) -> None:
+    """Write the session's recap once, on the turn that completes it.
+
+    A failed recap must not fail the turn: the learner has finished teaching and their mastery
+    is already recorded, so a missing summary is a far smaller loss than a 500 that hides the
+    completion from them.
+    """
+    existing = await db.execute(
+        select(ProtegeRecap).where(ProtegeRecap.session_id == session.id)
+    )
+    if existing.scalars().first() is not None:
+        return
+
+    try:
+        recap = await write_session_recap(
+            topic_name=topic.name,
+            transcript=merged["transcript"],
+            misconceptions=misconceptions,
+            resolved_ids=merged["resolved_misconceptions"],
+        )
+    except Exception:
+        log.exception("recap generation failed for session %s", session.id)
+        return
+
+    db.add(
+        ProtegeRecap(
+            id=str(uuid.uuid4()),
+            session_id=session.id,
+            learner_id=session.learner_id,
+            topic_id=session.topic_id,
+            summary=recap["summary"],
+            taught_well=recap["taught_well"],
+            still_shaky=recap["still_shaky"],
+            understanding_score=merged["understanding_score"],
+            turn_count=sum(1 for t in merged["transcript"] if t["role"] == "learner"),
+        )
+    )
 
 
 async def _publish(session_id: str, node: str, update: dict):
@@ -173,6 +224,7 @@ async def submit_protege_turn(req: ProtegeTurnRequest, db: AsyncSession = Depend
         # A completed teach-back is a real mastery signal — fold it in now (Section 9.5).
         await db.flush()
         await recompute_mastery(db, session.learner_id, session.topic_id)
+        await _write_recap(db, session, topic, misconceptions, merged)
     await db.commit()
 
     return ProtegeTurnResult(
@@ -184,6 +236,41 @@ async def submit_protege_turn(req: ProtegeTurnRequest, db: AsyncSession = Depend
         resolved_misconceptions=merged["resolved_misconceptions"],
         status=session.status,
     )
+
+
+async def _recap_result(db, recap: ProtegeRecap) -> ProtegeRecapResult:
+    topic = await db.get(Topic, recap.topic_id)
+    return ProtegeRecapResult(
+        session_id=recap.session_id,
+        topic_id=recap.topic_id,
+        topic_name=topic.name if topic else recap.topic_id,
+        summary=recap.summary,
+        taught_well=recap.taught_well,
+        still_shaky=recap.still_shaky,
+        understanding_score=recap.understanding_score,
+        turn_count=recap.turn_count,
+        created_at=recap.created_at,
+    )
+
+
+@router.get("/recaps", response_model=list[ProtegeRecapResult])
+async def list_protege_recaps(learner_id: str, db: AsyncSession = Depends(get_db)):
+    """Every finished teach-back for one learner, newest first."""
+    result = await db.execute(
+        select(ProtegeRecap)
+        .where(ProtegeRecap.learner_id == learner_id)
+        .order_by(ProtegeRecap.created_at.desc())
+    )
+    return [await _recap_result(db, r) for r in result.scalars().all()]
+
+
+@router.get("/{session_id}/recap", response_model=ProtegeRecapResult)
+async def get_protege_recap(session_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ProtegeRecap).where(ProtegeRecap.session_id == session_id))
+    recap = result.scalars().first()
+    if recap is None:
+        raise HTTPException(status_code=404, detail="no recap — session hasn't completed yet")
+    return await _recap_result(db, recap)
 
 
 @router.post("/publish")
