@@ -5,7 +5,7 @@ import ErrorAnalysisCard from "../components/ErrorAnalysisCard";
 import Flashcards from "../components/Flashcards";
 import Lesson from "../components/Lesson";
 import Quiz from "../components/Quiz";
-import { AlertIcon, ArrowIcon, PlayIcon, StarIcon } from "../components/Icons";
+import { AlertIcon, ArrowIcon, PlayIcon } from "../components/Icons";
 import { useLearner } from "../LearnerContext";
 import type { LearningSessionData, PipelineUpdate } from "../types";
 import TopicInput from "./TopicInput";
@@ -55,7 +55,7 @@ export default function LearningPipeline() {
     !!data.lesson?.overview,
     !!(data.quiz && data.quiz.length),
     !!(data.flashcards && data.flashcards.length),
-    !!(data.videos && data.videos.length) || !!(data.tutor_matches && data.tutor_matches.length),
+    !!(data.videos && data.videos.length),
   ];
   const activeStep = stepDone.findIndex((d) => !d);
 
@@ -146,28 +146,6 @@ export default function LearningPipeline() {
                 </span>
                 <ArrowIcon size={16} className="muted" />
               </a>
-            ))}
-          </div>
-        </>
-      )}
-
-      {data.tutor_matches && data.tutor_matches.length > 0 && (
-        <>
-          <div className="section-head">
-            <h3>Human help on this topic</h3>
-          </div>
-          <div className="stack">
-            {data.tutor_matches.map((t) => (
-              <div key={t.id} className="link-row">
-                <span className="avatar">{t.name.charAt(0)}</span>
-                <span style={{ flex: 1 }}>
-                  <strong style={{ display: "block" }}>{t.name}</strong>
-                  <span className="faint">
-                    <StarIcon size={12} /> {t.rating.toFixed(1)} · ${t.price_per_hour}/hr
-                  </span>
-                </span>
-                <span className="tag on_track">{t.verification_tier.replace("_", " ")}</span>
-              </div>
             ))}
           </div>
         </>

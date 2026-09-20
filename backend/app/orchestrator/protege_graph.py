@@ -1,6 +1,10 @@
 from langgraph.graph import END, START, StateGraph
 
-from app.orchestrator.nodes import protege_persona_node, understanding_scorer_node
+from app.orchestrator.nodes import (
+    pedagogy_guard_node,
+    protege_persona_node,
+    understanding_scorer_node,
+)
 from app.orchestrator.protege_state import ProtegeState
 
 
@@ -14,10 +18,12 @@ def build_protege_graph():
 
     graph.add_node("understanding_scorer", understanding_scorer_node)
     graph.add_node("protege_persona", protege_persona_node)
+    graph.add_node("pedagogy_guard", pedagogy_guard_node)
 
     graph.add_edge(START, "understanding_scorer")
     graph.add_edge("understanding_scorer", "protege_persona")
-    graph.add_edge("protege_persona", END)
+    graph.add_edge("protege_persona", "pedagogy_guard")
+    graph.add_edge("pedagogy_guard", END)
 
     return graph.compile()
 

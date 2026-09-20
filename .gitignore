@@ -17,3 +17,6 @@ build/
 .vscode/
 
 .claude/settings.local.json
+
+# Extension signing key — pins the extension ID; never commit
+*.pem

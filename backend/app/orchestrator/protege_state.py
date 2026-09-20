@@ -13,3 +13,4 @@ class ProtegeState(TypedDict):
     persona_message: str
     status: str  # active|completed
     gave_up_on: str | None  # misconception id the persona just explained itself, if any, this turn
+    guard_verdict: str  # skipped|passed|blocked — whether the pedagogy guard rewrote this turn

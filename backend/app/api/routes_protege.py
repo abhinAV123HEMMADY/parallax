@@ -146,10 +146,24 @@ async def submit_protege_turn(req: ProtegeTurnRequest, db: AsyncSession = Depend
     }
 
     merged: dict = {}
+    # The persona's own update is held back rather than published as it arrives: the pedagogy
+    # guard runs after it and may rewrite the message, and a subscriber that already received
+    # the pre-guard version has seen exactly what the guard exists to withhold.
+    persona_update: dict | None = None
     async for step in protege_graph.astream(state):
         for node_name, update in step.items():
             merged.update(update)
-            await _publish(session.id, node_name, update)
+            if node_name == "protege_persona":
+                persona_update = update
+            else:
+                await _publish(session.id, node_name, update)
+
+    if persona_update is not None:
+        await _publish(
+            session.id,
+            "protege_persona",
+            {**persona_update, "persona_message": merged["persona_message"]},
+        )
 
     session.transcript_json = merged["transcript"]
     session.understanding_score = merged["understanding_score"]
