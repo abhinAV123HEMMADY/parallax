@@ -50,13 +50,27 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
-      # ~130MB of ONNX weights, downloaded on first embed. Keyed on the model name in the
-      # shared package, so a model swap invalidates the cache instead of serving stale weights.
+      # Key the weight cache on the model's identity, not on the file that happens to name it.
+      # Hashing the source meant any edit to it — a docstring tweak, the parallax rename —
+      # discarded ~61MB of still-correct weights and re-downloaded them. Guarded with an
+      # explicit failure because the quiet version of this bug is the expensive one: an
+      # unresolvable name would still yield a plausible constant key that silently stopped
+      # tracking the model, so a real model swap would serve stale weights.
+      - name: Resolve embedding model
+        id: embed-model
+        run: |
+          name=$(sed -n 's/^_MODEL_NAME = "\(.*\)"$/\1/p' shared/parallax_embed/__init__.py)
+          if [ -z "$name" ]; then
+            echo "Could not read _MODEL_NAME from shared/parallax_embed/__init__.py" >&2
+            exit 1
+          fi
+          echo "key=${name//\//-}" >> "$GITHUB_OUTPUT"
+
       - name: Cache embedding model
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.fastembed_cache
-          key: fastembed-${{ runner.os }}-${{ hashFiles('shared/parallax_embed/__init__.py') }}
+          key: fastembed-${{ runner.os }}-${{ steps.embed-model.outputs.key }}
 
       - name: Install dependencies
         run: |
