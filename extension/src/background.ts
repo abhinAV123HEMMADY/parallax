@@ -9,6 +9,7 @@
 import * as api from "./lib/api";
 import { FLUSH_ALARM, enqueue, flush, pendingFor } from "./lib/queue";
 import { getSettings } from "./lib/storage";
+import { DEFAULT_LEARNER_ID } from "./lib/types";
 import type { CaptureRect, WorkerRequest, WorkerResponse } from "./lib/types";
 
 /** Downscale target. Keeps a frame far inside the backend's 200KB cap on the stored data URL. */
@@ -103,13 +104,8 @@ async function handle(message: WorkerRequest, sender: chrome.runtime.MessageSend
     case "getSettings":
       return settings;
 
-    case "listUsers":
-      return api.listUsers();
-
-    case "listNotes": {
-      if (!settings.learnerId) throw new Error("no learner selected — open the extension options");
-      return api.listNotes(settings.learnerId, message.videoId);
-    }
+    case "listNotes":
+      return api.listNotes(DEFAULT_LEARNER_ID, message.videoId);
 
     case "createNote": {
       // Queued, never sent inline: the capture has already happened from the learner's point of
@@ -119,10 +115,8 @@ async function handle(message: WorkerRequest, sender: chrome.runtime.MessageSend
       return { localId: queued.localId, ...result };
     }
 
-    case "deleteNote": {
-      if (!settings.learnerId) throw new Error("no learner selected");
-      return api.deleteNote(settings.learnerId, message.noteId);
-    }
+    case "deleteNote":
+      return api.deleteNote(DEFAULT_LEARNER_ID, message.noteId);
 
     case "ingestTranscript":
       return api.ingestTranscript(message.videoId, message.videoTitle, message.cues);
@@ -131,7 +125,7 @@ async function handle(message: WorkerRequest, sender: chrome.runtime.MessageSend
       return api.topicSuggestion(message.videoId, message.videoTitle);
 
     case "ask":
-      return api.askVideo(message.videoId, message.question, settings.learnerId);
+      return api.askVideo(message.videoId, message.question, DEFAULT_LEARNER_ID);
 
     case "captureFrame":
       return { screenshot: await captureFrame(message.rect) };
@@ -151,7 +145,7 @@ async function handle(message: WorkerRequest, sender: chrome.runtime.MessageSend
     case "openExport": {
       // PDF export lives in the web app, which already has the note packs, the prerequisite
       // ordering and a PDF renderer. Duplicating it here would mean a second copy of both.
-      const base = settings.apiBase.replace(/:8000$/, ":5173");
+      const base = settings.webBase.replace(/\/$/, "");
       await chrome.tabs.create({ url: `${base}/#/notes/export/${message.videoId}` });
       return { opened: true };
     }

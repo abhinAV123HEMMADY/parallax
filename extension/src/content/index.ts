@@ -22,7 +22,8 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from "../lib/types";
-import { cueAt, getCues, liveCaptionText } from "./captions";
+import { DEFAULT_LEARNER_ID } from "../lib/types";
+import { cueAt, getCues, getCuesFromTranscriptPanel, liveCaptionText } from "./captions";
 import { Panel } from "./panel";
 import {
   currentSeconds,
@@ -78,15 +79,14 @@ async function loadCaptions(): Promise<void> {
   state.cuesLoaded = true;
 
   try {
+    panel.setStatus("Reading captions…");
     const { url } = await send<{ url: string | null }>({ kind: "captionTrackUrl" });
-    if (!url) {
-      panel.setStatus("No caption track on this video — notes save without transcript context.");
-      return;
-    }
 
-    const cues = await getCues(url);
+    // No track in the player response doesn't mean no transcript: the panel is populated by a
+    // different call, so it is worth asking even here rather than giving up on the video.
+    const cues = url ? await getCues(url) : await getCuesFromTranscriptPanel();
     if (cues.length === 0) {
-      panel.setStatus("Captions could not be read — notes save without transcript context.");
+      panel.setStatus("No transcript available — notes still save, without transcript context.");
       return;
     }
     state.cues = cues;
@@ -105,7 +105,7 @@ async function loadCaptions(): Promise<void> {
       videoId: state.videoId,
       videoTitle: state.title,
     });
-    panel.setTopic(suggestion.chosen);
+    panel.setTopic(suggestion.chosen, suggestion.proposed);
   } catch (error) {
     panel.setStatus(
       `Transcript sync failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -146,13 +146,10 @@ async function beginCapture(): Promise<void> {
 let pendingScreenshot: string | null = null;
 
 async function saveNote(text: string, share: boolean, topicId: string | null): Promise<void> {
-  if (!panel || !state || !settings?.learnerId) {
-    panel?.setStatus("Pick a learner in the Parallax extension options first.", true);
-    return;
-  }
+  if (!panel || !state) return;
 
   const payload: NoteCreate = {
-    learner_id: settings.learnerId,
+    learner_id: DEFAULT_LEARNER_ID,
     video_id: state.videoId,
     video_title: state.title,
     t_seconds: panel.composerSeconds,
@@ -267,10 +264,7 @@ async function setup(attempt = 0): Promise<void> {
   }
 
   panel.setTopic(null);
-  panel.setStatus(
-    settings.learnerId ? "Reading captions…" : "No learner selected — open the Parallax options.",
-    !settings.learnerId,
-  );
+  panel.setStatus("Reading captions…");
 
   await refreshNotes();
   void loadCaptions();

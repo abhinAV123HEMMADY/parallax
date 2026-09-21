@@ -6,15 +6,23 @@
  * why it lives in one module behind one contract (`getCues`, `liveCaptionText`): when YouTube
  * changes something, exactly one file breaks and the rest of the extension keeps working.
  *
- * Two independent paths, because they fail in different situations:
+ * Three independent paths, because they fail in different situations:
  *
  *   1. The full cue list, from the player's caption track. Needs no captions visible on screen
  *      and gives the whole transcript, which is what the backend ingests for search and Q&A.
- *   2. The rendered caption line. Needs captions switched on and gives only the current moment,
+ *   2. YouTube's own transcript panel, scraped from the DOM. Slower and it has to touch the
+ *      page, but it is the only path that still works when (1) is refused.
+ *   3. The rendered caption line. Needs captions switched on and gives only the current moment,
  *      but survives any change to the player response shape.
  *
- * When both fail the note is still saved without an excerpt. A missing excerpt is a small loss;
- * refusing the capture would be a large one.
+ * Path (2) exists because YouTube now gates `timedtext` behind a proof-of-origin token. Without
+ * one the request still returns **HTTP 200 with a zero-length body** rather than an error, so
+ * every format negotiation "succeeds" and yields nothing — which is why this presented as
+ * "captions could not be read" rather than as a failed fetch. The transcript panel is served
+ * through the player's own authenticated path, so it is unaffected.
+ *
+ * When all three fail the note is still saved without an excerpt. A missing excerpt is a small
+ * loss; refusing the capture would be a large one.
  */
 
 import type { Cue } from "../lib/types";
@@ -63,6 +71,82 @@ export function parseTimedTextXml(xml: string): Cue[] {
   return cues;
 }
 
+/** "1:23" → 83, "1:02:03" → 3723. Returns null for anything that isn't a timestamp. */
+export function parseTimestamp(stamp: string): number | null {
+  const parts = stamp.trim().split(":");
+  if (parts.length < 2 || parts.length > 3) return null;
+  const numbers = parts.map((p) => Number(p));
+  if (numbers.some((n) => !Number.isFinite(n) || n < 0)) return null;
+  return parts.length === 3
+    ? numbers[0]! * 3600 + numbers[1]! * 60 + numbers[2]!
+    : numbers[0]! * 60 + numbers[1]!;
+}
+
+/**
+ * Turns the transcript panel's rows into cues.
+ *
+ * Split out from the DOM walk so the parsing is testable without a browser: the panel's markup
+ * is YouTube's to change, but the shape of what comes out of it is this extension's contract.
+ * Rows whose timestamp doesn't parse are dropped rather than defaulted to zero — a cue at the
+ * wrong second sends the learner to the wrong moment, which is worse than a missing cue.
+ */
+export function parseTranscriptRows(rows: Array<{ stamp: string; text: string }>): Cue[] {
+  const cues: Cue[] = [];
+  for (const row of rows) {
+    const seconds = parseTimestamp(row.stamp);
+    if (seconds === null) continue;
+    // Panel rows wrap mid-sentence, so the newlines are layout rather than meaning.
+    const text = row.text.replace(/\s+/g, " ").trim();
+    if (text) cues.push({ t_seconds: seconds, text });
+  }
+  return cues;
+}
+
+/**
+ * Reads the full transcript out of YouTube's own transcript panel.
+ *
+ * This is the only path that survives the proof-of-origin gate on `timedtext`, but it costs a
+ * visible side effect: the panel has to be open to be read. So the panel's prior state is
+ * captured and restored — a learner who never opened it doesn't get it left open, and one who
+ * did keeps it. Returns [] rather than throwing on any missing element, because a caption
+ * failure must never cost the note.
+ */
+export async function getCuesFromTranscriptPanel(): Promise<Cue[]> {
+  const readRows = () =>
+    Array.from(document.querySelectorAll("ytd-transcript-segment-renderer")).map((node) => ({
+      stamp: node.querySelector(".segment-timestamp")?.textContent ?? "",
+      text: node.querySelector(".segment-text")?.textContent ?? "",
+    }));
+
+  // Already open — read it and leave it exactly as found.
+  if (document.querySelector("ytd-transcript-segment-renderer")) {
+    return parseTranscriptRows(readRows());
+  }
+
+  const open = Array.from(document.querySelectorAll("button")).find((button) =>
+    /show transcript/i.test(button.getAttribute("aria-label") ?? button.textContent ?? ""),
+  );
+  if (!open) return [];
+  open.click();
+
+  // The panel renders asynchronously. Poll rather than guess a delay: the wait is the whole
+  // cost of this path, so finishing as soon as rows appear matters.
+  let rows: Array<{ stamp: string; text: string }> = [];
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    rows = readRows();
+    if (rows.length > 0) break;
+  }
+
+  // Put it back. The learner didn't ask for this panel; reading it is our business, not theirs.
+  const close = document.querySelector<HTMLButtonElement>(
+    "ytd-engagement-panel-section-list-renderer[target-id='engagement-panel-searchable-transcript'] #visibility-button button",
+  );
+  close?.click();
+
+  return parseTranscriptRows(rows);
+}
+
 /**
  * Fetches and parses the full cue list for the current video.
  *
@@ -90,12 +174,16 @@ export async function getCues(trackUrl: string): Promise<Cue[]> {
 
   try {
     const response = await fetch(trackUrl, { credentials: "include" });
-    if (!response.ok) return [];
-    return parseTimedTextXml(await response.text());
+    if (response.ok) {
+      const cues = parseTimedTextXml(await response.text());
+      if (cues.length > 0) return cues;
+    }
   } catch (error) {
-    console.warn("[parallax] caption fetch failed entirely", error);
-    return [];
+    console.warn("[parallax] caption fetch failed, falling back to the transcript panel", error);
   }
+
+  // Both direct fetches came back empty — the proof-of-origin gate. Read the panel instead.
+  return getCuesFromTranscriptPanel();
 }
 
 /** The caption line currently rendered on the player, if the learner has captions on. */

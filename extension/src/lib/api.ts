@@ -11,7 +11,6 @@
 import { getSettings } from "./storage";
 import type {
   Cue,
-  ParallaxUser,
   NoteCreate,
   NoteOut,
   TopicSuggestionResponse,
@@ -56,10 +55,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function health() {
   return request<{ status: string; llm_configured: boolean; embed_backend: string }>("/health");
-}
-
-export function listUsers() {
-  return request<ParallaxUser[]>("/users");
 }
 
 export function createNote(payload: NoteCreate) {

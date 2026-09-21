@@ -7,6 +7,7 @@
 
 import { recentNotes, health } from "../lib/api";
 import { getSettings } from "../lib/storage";
+import { DEFAULT_LEARNER_ID } from "../lib/types";
 import type { NoteOut } from "../lib/types";
 
 const statusLine = document.getElementById("status") as HTMLParagraphElement;
@@ -56,18 +57,13 @@ function renderNotes(notes: NoteOut[]): void {
 
 async function main(): Promise<void> {
   const settings = await getSettings();
-  if (!settings.learnerId) {
-    statusLine.textContent = "No learner selected — open Settings to pick one.";
-    statusLine.classList.add("error");
-    return;
-  }
 
   try {
     const info = await health();
     statusLine.textContent = `Connected · embeddings: ${info.embed_backend} · model: ${
       info.llm_configured ? "live" : "stub"
     }`;
-    renderNotes(await recentNotes(settings.learnerId, 8));
+    renderNotes(await recentNotes(DEFAULT_LEARNER_ID, 8));
   } catch (error) {
     statusLine.textContent = `Can't reach ${settings.apiBase} — ${
       error instanceof Error ? error.message : String(error)
