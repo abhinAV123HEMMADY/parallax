@@ -7,7 +7,13 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { cueAt, parseJson3, parseTimedTextXml } from "../src/content/captions";
+import {
+  cueAt,
+  parseJson3,
+  parseTimedTextXml,
+  parseTimestamp,
+  parseTranscriptRows,
+} from "../src/content/captions";
 import { backoffMs, isDue } from "../src/lib/queue";
 import type { QueuedNote } from "../src/lib/types";
 
@@ -113,5 +119,58 @@ describe("queue retry policy", () => {
   it("never retries a permanently failed note", () => {
     // A 4xx would otherwise sit at the head of the queue forever, blocking everything behind it.
     expect(isDue(note({ failedPermanently: true }), Number.MAX_SAFE_INTEGER)).toBe(false);
+  });
+});
+
+describe("parseTimestamp", () => {
+  it("reads mm:ss", () => {
+    expect(parseTimestamp("0:00")).toBe(0);
+    expect(parseTimestamp("1:23")).toBe(83);
+    expect(parseTimestamp("12:05")).toBe(725);
+  });
+
+  it("reads h:mm:ss", () => {
+    expect(parseTimestamp("1:02:03")).toBe(3723);
+  });
+
+  it("tolerates the padding the panel renders with", () => {
+    expect(parseTimestamp("  2:43 ")).toBe(163);
+  });
+
+  it("rejects anything that isn't a timestamp", () => {
+    // Dropped rather than defaulted to 0: a cue at the wrong second sends the learner to the
+    // wrong moment, which is worse than having no cue at all.
+    expect(parseTimestamp("")).toBeNull();
+    expect(parseTimestamp("later")).toBeNull();
+    expect(parseTimestamp("1:2:3:4")).toBeNull();
+    expect(parseTimestamp("a:b")).toBeNull();
+    expect(parseTimestamp("-1:00")).toBeNull();
+  });
+});
+
+describe("parseTranscriptRows", () => {
+  it("converts panel rows into cues", () => {
+    expect(
+      parseTranscriptRows([
+        { stamp: "0:00", text: "In this video, I want\nto familiarize you" },
+        { stamp: "0:07", text: "with the idea of a limit." },
+      ]),
+    ).toEqual([
+      { t_seconds: 0, text: "In this video, I want to familiarize you" },
+      { t_seconds: 7, text: "with the idea of a limit." },
+    ]);
+  });
+
+  it("collapses the panel's layout newlines", () => {
+    const [cue] = parseTranscriptRows([{ stamp: "1:00", text: "a\n  b\t c" }]);
+    expect(cue?.text).toBe("a b c");
+  });
+
+  it("drops rows with an unparseable timestamp rather than filing them at zero", () => {
+    expect(parseTranscriptRows([{ stamp: "??", text: "orphan" }])).toEqual([]);
+  });
+
+  it("drops empty rows", () => {
+    expect(parseTranscriptRows([{ stamp: "0:05", text: "   " }])).toEqual([]);
   });
 });
