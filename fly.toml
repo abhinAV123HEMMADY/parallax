@@ -1,0 +1,50 @@
+# Fly deploy for the Parallax backend: API + Celery worker + the four MCP servers in one
+# machine, built from the repo Dockerfile and launched by deploy/start.sh.
+#
+# Postgres is Supabase (free, pgvector included) and Redis is Upstash — neither runs here.
+# Set them as secrets, not env, since both connection strings carry credentials:
+#
+#   fly secrets set DATABASE_URL="postgresql://...supabase..." \
+#                   REDIS_URL="rediss://...upstash..." \
+#                   OPENAI_API_KEY="sk-..." \
+#                   CORS_ORIGINS="https://parallax-anvi.vercel.app,http://localhost:5173"
+#
+# Use Supabase's DIRECT connection string (port 5432), not the pooler (6543): the app talks to
+# Postgres with asyncpg, which breaks against pgbouncer in transaction mode over prepared
+# statements.
+
+app = "parallax-anvi-api"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+
+  # The machine stays up. Stopping it would be cheaper, but every start re-runs init_db and
+  # reseeds the check, and a judge hitting a cold machine waits through it mid-demo. At 1GB
+  # shared-cpu-1x the always-on cost is a few dollars a month.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    path = "/health"
+    # Generous: first boot runs init_db and seeds an empty database before serving, which
+    # measured ~35s locally. A tighter window would kill the machine mid-seed and loop forever.
+    grace_period = "90s"
+    interval = "30s"
+    timeout = "10s"
+
+[[vm]]
+  # 1GB, not the 512MB default. Measured on the built image: 386MB idle, 512MB once the API
+  # loads the embedding model, and the two vector MCP servers each load their own copy when
+  # first queried. 512MB OOMs; this leaves headroom for all three.
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1

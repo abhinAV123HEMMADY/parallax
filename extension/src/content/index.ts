@@ -22,7 +22,8 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from "../lib/types";
-import { cueAt, getCues, liveCaptionText } from "./captions";
+import { DEFAULT_LEARNER_ID } from "../lib/types";
+import { cueAt, getCues, getCuesFromTranscriptPanel, liveCaptionText } from "./captions";
 import { Panel } from "./panel";
 import {
   currentSeconds,
@@ -73,22 +74,49 @@ async function refreshNotes(): Promise<void> {
  * makes this video searchable by Parallax's existing timestamp search, so it is worth doing eagerly
  * rather than on first note.
  */
-async function loadCaptions(): Promise<void> {
+/**
+ * How many times to ask for captions before believing a video has none, and how long to wait
+ * between tries. The player populates its caption list slightly after the page becomes
+ * interactive, so the first ask can legitimately come back empty on a video with 38 tracks.
+ * Roughly three seconds total, which is well inside the time it takes to start watching.
+ */
+const CAPTION_ATTEMPTS = 4;
+const CAPTION_RETRY_MS = 900;
+
+/** Guards against two first-attempt runs overlapping; retries pass attempt > 0 and bypass it. */
+let captionsInFlight = false;
+
+async function loadCaptions(attempt = 0): Promise<void> {
   if (!state || !panel || state.cuesLoaded) return;
-  state.cuesLoaded = true;
+  if (captionsInFlight && attempt === 0) return;
+  captionsInFlight = true;
+
+  // Captured so a retry that lands after the learner has navigated away is discarded rather
+  // than writing another video's transcript into this one's state.
+  const videoId = state.videoId;
 
   try {
+    panel.setStatus("Reading captions…");
     const { url } = await send<{ url: string | null }>({ kind: "captionTrackUrl" });
-    if (!url) {
-      panel.setStatus("No caption track on this video — notes save without transcript context.");
-      return;
-    }
 
-    const cues = await getCues(url);
+    // No track in the player response doesn't mean no transcript: the panel is populated by a
+    // different call, so it is worth asking even here rather than giving up on the video.
+    const cues = url ? await getCues(url) : await getCuesFromTranscriptPanel();
     if (cues.length === 0) {
-      panel.setStatus("Captions could not be read — notes save without transcript context.");
+      // Don't brand the video transcript-less on the first miss. cuesLoaded is deliberately
+      // still false here: it used to be set before the attempt, which made one early empty
+      // read permanent for the rest of the visit.
+      if (attempt < CAPTION_ATTEMPTS - 1) {
+        captionsInFlight = false;
+        setTimeout(() => {
+          if (state?.videoId === videoId) void loadCaptions(attempt + 1);
+        }, CAPTION_RETRY_MS);
+        return;
+      }
+      panel.setStatus("No transcript available — notes still save, without transcript context.");
       return;
     }
+    state.cuesLoaded = true;
     state.cues = cues;
 
     const result = await send<{ chunks_written: number }>({
@@ -105,12 +133,16 @@ async function loadCaptions(): Promise<void> {
       videoId: state.videoId,
       videoTitle: state.title,
     });
-    panel.setTopic(suggestion.chosen);
+    panel.setTopic(suggestion.chosen, suggestion.proposed);
   } catch (error) {
     panel.setStatus(
       `Transcript sync failed: ${error instanceof Error ? error.message : String(error)}`,
       true,
     );
+  } finally {
+    // Without this a thrown request would leave the flag set and block every later attempt,
+    // including the one a fresh navigation would otherwise make.
+    captionsInFlight = false;
   }
 }
 
@@ -146,13 +178,10 @@ async function beginCapture(): Promise<void> {
 let pendingScreenshot: string | null = null;
 
 async function saveNote(text: string, share: boolean, topicId: string | null): Promise<void> {
-  if (!panel || !state || !settings?.learnerId) {
-    panel?.setStatus("Pick a learner in the Parallax extension options first.", true);
-    return;
-  }
+  if (!panel || !state) return;
 
   const payload: NoteCreate = {
-    learner_id: settings.learnerId,
+    learner_id: DEFAULT_LEARNER_ID,
     video_id: state.videoId,
     video_title: state.title,
     t_seconds: panel.composerSeconds,
@@ -267,10 +296,7 @@ async function setup(attempt = 0): Promise<void> {
   }
 
   panel.setTopic(null);
-  panel.setStatus(
-    settings.learnerId ? "Reading captions…" : "No learner selected — open the Parallax options.",
-    !settings.learnerId,
-  );
+  panel.setStatus("Reading captions…");
 
   await refreshNotes();
   void loadCaptions();

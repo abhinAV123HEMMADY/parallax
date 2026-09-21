@@ -56,10 +56,17 @@ export interface TopicSuggestion {
   strategy: string;
 }
 
+export interface ProposedTopic {
+  name: string;
+  subject: string;
+}
+
 export interface TopicSuggestionResponse {
   chosen: TopicSuggestion;
   lexical: TopicSuggestion;
   semantic: TopicSuggestion;
+  /** What saving a note would create. Null when `chosen` matched an existing topic. */
+  proposed: ProposedTopic | null;
 }
 
 export interface Citation {
@@ -71,12 +78,6 @@ export interface VideoAskResponse {
   answer: string;
   citations: Citation[];
   stubbed: boolean;
-}
-
-export interface ParallaxUser {
-  id: string;
-  name: string;
-  grade_level: string | null;
 }
 
 /** A note waiting to reach the backend. Persisted, so it survives the worker being killed. */
@@ -93,7 +94,6 @@ export interface QueuedNote {
 
 export type WorkerRequest =
   | { kind: "getSettings" }
-  | { kind: "listUsers" }
   | { kind: "listNotes"; videoId: string }
   | { kind: "createNote"; payload: NoteCreate }
   | { kind: "deleteNote"; noteId: string }
@@ -116,14 +116,28 @@ export interface CaptureRect {
 
 export type WorkerResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
+/**
+ * Who notes belong to. The backend requires a learner (video_notes.learner_id is a NOT NULL FK
+ * to users.id), so notes cannot be anonymous — but nothing about that has to be a setup step.
+ * The extension uses the same seeded learner the web app defaults to in
+ * frontend/src/LearnerContext.tsx, so a note captured on YouTube shows up in Parallax without
+ * anyone choosing a profile in two places. Change both together.
+ */
+export const DEFAULT_LEARNER_ID = "u_amy";
+
 export interface Settings {
   apiBase: string;
-  learnerId: string | null;
+  /**
+   * Where the Parallax web app lives. Separate from apiBase because they only share a host in
+   * local dev: deployed, the API and the web app sit on different domains entirely, so the old
+   * trick of rewriting apiBase's :8000 to :5173 produced a URL that did not exist.
+   */
+  webBase: string;
   shareByDefault: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   apiBase: "http://localhost:8000",
-  learnerId: null,
+  webBase: "http://localhost:5173",
   shareByDefault: false,
 };

@@ -8,7 +8,24 @@ set -euo pipefail
 # app expects: asyncpg for the API, psycopg for sync scripts, plain for the MCP servers.
 RAW_DB_URL="${DATABASE_URL:?DATABASE_URL is required}"
 BASE_DB_URL="$(printf '%s' "$RAW_DB_URL" | sed -E 's#^postgres(ql)?://#postgresql://#')"
-export DATABASE_URL="${BASE_DB_URL/postgresql:\/\//postgresql+asyncpg://}"
+
+# Hosted Postgres (Neon, Supabase) hands out a libpq URL carrying sslmode= and often
+# channel_binding=. Those are fine for psycopg and for raw asyncpg, which parse a DSN — but
+# SQLAlchemy's asyncpg dialect forwards unknown query parameters as connect() keyword
+# arguments, so the same URL dies with "connect() got an unexpected keyword argument
+# 'sslmode'" the moment the API opens a connection. asyncpg spells it ssl= instead.
+ASYNC_DB_URL="$(printf '%s' "$BASE_DB_URL" | sed -E 's#[?&](sslmode|channel_binding)=[^&]*##g')"
+case "$BASE_DB_URL" in
+  # Only re-add TLS if the provider asked for it; a plain local postgres:// must stay plain.
+  *sslmode=require*|*sslmode=verify*)
+    case "$ASYNC_DB_URL" in
+      *\?*) ASYNC_DB_URL="${ASYNC_DB_URL}&ssl=require" ;;
+      *)    ASYNC_DB_URL="${ASYNC_DB_URL}?ssl=require" ;;
+    esac
+    ;;
+esac
+
+export DATABASE_URL="${ASYNC_DB_URL/postgresql:\/\//postgresql+asyncpg://}"
 export DATABASE_URL_SYNC="${BASE_DB_URL/postgresql:\/\//postgresql+psycopg://}"
 export MCP_DATABASE_URL="$BASE_DB_URL"
 

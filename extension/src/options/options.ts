@@ -1,16 +1,16 @@
 /**
- * Options page: backend URL, learner profile, default sharing.
+ * Options page: backend URL and default sharing.
  *
- * The learner picker exists because the backend has no auth — app/api/routes_users.py lists
- * profiles and nothing gates them. That is honest for a local project and stated plainly in the
- * page itself rather than dressed up as a login.
+ * There is no profile picker. Notes go to the learner the web app also defaults to
+ * (DEFAULT_LEARNER_ID), so the extension works the moment it is installed. The backend has no
+ * auth either way; the page says so plainly rather than dressing the absence up as a login.
  */
 
-import { health, listUsers } from "../lib/api";
+import { health } from "../lib/api";
 import { getSettings, saveSettings } from "../lib/storage";
 
 const apiBaseInput = document.getElementById("apiBase") as HTMLInputElement;
-const learnerSelect = document.getElementById("learner") as HTMLSelectElement;
+const webBaseInput = document.getElementById("webBase") as HTMLInputElement;
 const shareBox = document.getElementById("share") as HTMLInputElement;
 const savedLabel = document.getElementById("saved") as HTMLSpanElement;
 const reachLine = document.getElementById("reach") as HTMLParagraphElement;
@@ -26,36 +26,6 @@ function showCorsHint(): void {
     `Add this origin to <code>CORS_ORIGINS</code> in your backend <code>.env</code>: ` +
     `<code>chrome-extension://${chrome.runtime.id}</code>. Unpacked extensions get a new id on ` +
     `each reload unless the manifest pins a <code>key</code>, so re-check this after reloading.`;
-}
-
-async function loadLearners(selected: string | null): Promise<void> {
-  try {
-    const users = await listUsers();
-    learnerSelect.replaceChildren();
-
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "— select —";
-    learnerSelect.append(blank);
-
-    for (const user of users) {
-      const option = document.createElement("option");
-      option.value = user.id;
-      option.textContent = user.grade_level ? `${user.name} (${user.grade_level})` : user.name;
-      if (user.id === selected) option.selected = true;
-      learnerSelect.append(option);
-    }
-  } catch (error) {
-    learnerSelect.replaceChildren();
-    const failed = document.createElement("option");
-    failed.value = selected ?? "";
-    failed.textContent = selected ?? "could not load profiles";
-    learnerSelect.append(failed);
-    reachLine.textContent = `Couldn't reach the backend: ${
-      error instanceof Error ? error.message : String(error)
-    }`;
-    reachLine.className = "error";
-  }
 }
 
 async function checkReachable(): Promise<void> {
@@ -75,23 +45,20 @@ async function main(): Promise<void> {
   showCorsHint();
   const settings = await getSettings();
   apiBaseInput.value = settings.apiBase;
+  webBaseInput.value = settings.webBase;
   shareBox.checked = settings.shareByDefault;
 
   await checkReachable();
-  await loadLearners(settings.learnerId);
 
-  // Saving the URL before reloading profiles, so switching backends repopulates the picker from
-  // the new one rather than leaving stale names selectable.
   apiBaseInput.addEventListener("change", async () => {
     await saveSettings({ apiBase: apiBaseInput.value.trim().replace(/\/$/, "") });
     await checkReachable();
-    await loadLearners(learnerSelect.value || null);
   });
 
   document.getElementById("save")?.addEventListener("click", async () => {
     await saveSettings({
       apiBase: apiBaseInput.value.trim().replace(/\/$/, ""),
-      learnerId: learnerSelect.value || null,
+      webBase: webBaseInput.value.trim().replace(/\/$/, ""),
       shareByDefault: shareBox.checked,
     });
     savedLabel.textContent = "Saved.";

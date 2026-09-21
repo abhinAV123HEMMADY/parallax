@@ -23,8 +23,11 @@ services:
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false # set in the dashboard when the blueprint prompts for it
+      # The deployed frontend, plus localhost for running the web app against this backend.
+      # The Chrome extension's own origin is NOT here: it changes on every unpacked reload, so
+      # add it from the extension's options page (which prints it) when you demo the extension.
       - key: CORS_ORIGINS
-        value: "*" # tighten to the Vercel domain once you know it
+        value: "https://parallax-anvi.vercel.app,https://frontend-six-ebon-80.vercel.app,http://localhost:5173"
 
   - type: keyvalue
     name: parallax-redis
