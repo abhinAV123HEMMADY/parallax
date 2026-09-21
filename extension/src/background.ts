@@ -67,22 +67,47 @@ async function captureFrame(rect: CaptureRect): Promise<string | null> {
 }
 
 /**
- * Reads the caption track URL out of the page's own `ytInitialPlayerResponse`.
+ * Reads the caption track URL for the video currently in the player.
  *
  * A content script runs in an isolated world and cannot see page globals, so the only way to this
  * value is executing in the MAIN world. The returned URL is then fetched by the content script,
  * where the request is same-origin to youtube.com — which is the whole reason caption access is
  * reliable from an extension and unreliable from a server.
+ *
+ * Asks the player before the page global, and that order is the whole point. YouTube is a single
+ * page app: `ytInitialPlayerResponse` is written once, by the document that first loaded. Arrive
+ * at a video the ordinary way — search, click a result — and it is simply absent, which read as
+ * "No transcript available" on a video with 38 caption tracks. Worse, after navigating from one
+ * video to another it survives holding the *previous* video's data, so trusting it first risks
+ * ingesting the wrong transcript rather than none. `#movie_player.getPlayerResponse()` always
+ * describes what is actually playing. The global stays as a fallback for the brief window during
+ * a hard load where the player element exists but its API is not attached yet.
  */
 async function captionTrackUrl(tabId: number): Promise<string | null> {
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
     func: () => {
-      const response = (window as unknown as { ytInitialPlayerResponse?: unknown })
-        .ytInitialPlayerResponse as
-        | { captions?: { playerCaptionsTracklistRenderer?: { captionTracks?: unknown[] } } }
-        | undefined;
+      type PlayerResponse = {
+        captions?: { playerCaptionsTracklistRenderer?: { captionTracks?: unknown[] } };
+      };
+
+      const player = document.querySelector("#movie_player") as
+        | (Element & { getPlayerResponse?: () => PlayerResponse })
+        | null;
+
+      let response: PlayerResponse | undefined;
+      try {
+        response = player?.getPlayerResponse?.();
+      } catch {
+        // A player mid-teardown can throw rather than return; fall through to the global.
+        response = undefined;
+      }
+      if (!response?.captions) {
+        response = (window as unknown as { ytInitialPlayerResponse?: PlayerResponse })
+          .ytInitialPlayerResponse;
+      }
+
       const tracks = response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
       if (!Array.isArray(tracks) || tracks.length === 0) return null;
       // Prefer a manually authored English track over an auto-generated one: auto captions have
