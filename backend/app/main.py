@@ -14,9 +14,9 @@ from app.api import (
 )
 from app.config import settings
 from app.llm import llm_enabled
-from mentra_embed import active_backend
+from parallax_embed import active_backend
 
-app = FastAPI(title="Mentra API")
+app = FastAPI(title="Parallax API")
 
 app.add_middleware(
     CORSMiddleware,

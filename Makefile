@@ -15,7 +15,7 @@ install-shared:
 seed:
 	cd backend && python scripts/init_db.py && python scripts/seed.py
 
-# Rewrites every stored vector with the current embedder. Needed after changing MENTRA_EMBED
+# Rewrites every stored vector with the current embedder. Needed after changing PARALLAX_EMBED
 # or the model behind it — vectors from different embedders are not comparable, and mixing them
 # degrades ranking silently rather than erroring.
 reembed:

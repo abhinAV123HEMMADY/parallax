@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mentra_embed import embed_documents
+from parallax_embed import embed_documents
 
 from app.config import settings
 from app.database import get_db

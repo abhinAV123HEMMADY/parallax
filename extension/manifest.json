@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Mentra — Watch & Note",
+  "name": "Parallax — Watch & Note",
   "version": "0.1.0",
-  "description": "Capture timestamped notes with frame snapshots on YouTube lectures, synced to Mentra.",
+  "description": "Capture timestamped notes with frame snapshots on YouTube lectures, synced to Parallax.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy6VKVE5CbGNUtubNqJuGUHNhqIjPdQ0QBWH7ahjYXezjdQcIvB5qQsH6VfXfg50fJjZ15IgHnp+6u/I8Tf/QRppKA4mIUwCL975WbIF/SSRoXOo4go9rWtADTLUeZTCFvyPiZt8C6Vm8QwjrwYssZ6ZDds5ufZ3U0BsKMg30j/BCNoZolgmIhFaO9wz30kbet99dH496wYidyA6qxeFjnQbJzJBIHqLdf93in7SyCVTaV4gHX8X/pd4tBACZ01s3TkGfq9bCH8LbJ75wVgxzb7Ly4EU7bl00Szp0lFjFCT8OHyfhMQV5cADL6L/TWG3R72V/xPFcRtM7YglZcYJieQIDAQAB",
   "permissions": ["storage", "scripting", "activeTab", "alarms"],
   "host_permissions": [
@@ -22,7 +22,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Mentra",
+    "default_title": "Parallax",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

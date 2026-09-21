@@ -63,7 +63,7 @@ export default function NotesExport() {
             return;
           }
           element = <CoursePackDocument pack={pack} />;
-          filename = `mentra-${safeFilename(pack.topic_name)}-course-pack.pdf`;
+          filename = `parallax-${safeFilename(pack.topic_name)}-course-pack.pdf`;
           label = `${pack.topic_name} — course pack`;
         } else if (videoId) {
           const pack: VideoNotePack = await getVideoNotePack(learnerId, videoId);
@@ -73,7 +73,7 @@ export default function NotesExport() {
             return;
           }
           element = <VideoPackDocument pack={pack} />;
-          filename = `mentra-${safeFilename(pack.video_title)}-notes.pdf`;
+          filename = `parallax-${safeFilename(pack.video_title)}-notes.pdf`;
           label = pack.video_title;
         } else {
           if (!cancelled) setStatus({ phase: "error", message: "No video or topic in the URL." });
@@ -112,7 +112,7 @@ export default function NotesExport() {
 
       {status.phase === "empty" && (
         <p className="muted">
-          No notes here yet. Capture a moment with the Mentra extension on a YouTube lecture, then
+          No notes here yet. Capture a moment with the Parallax extension on a YouTube lecture, then
           come back.
         </p>
       )}

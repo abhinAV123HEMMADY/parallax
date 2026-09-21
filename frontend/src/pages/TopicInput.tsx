@@ -52,7 +52,7 @@ export default function TopicInput({
           className="icon-btn"
           disabled={disabled}
           onClick={() => fileRef.current?.click()}
-          title="Snap your worked attempt — Mentra localizes the first wrong step"
+          title="Snap your worked attempt — Parallax localizes the first wrong step"
           aria-label="Snap a problem"
         >
           <CameraIcon size={17} />

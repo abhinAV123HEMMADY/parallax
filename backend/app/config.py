@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     # Ports are 5433/6380, not the defaults — see docker-compose.yml / .env.example for why.
-    database_url: str = "postgresql+asyncpg://mentra:mentra@localhost:5433/mentra"
-    database_url_sync: str = "postgresql+psycopg://mentra:mentra@localhost:5433/mentra"
+    database_url: str = "postgresql+asyncpg://parallax:parallax@localhost:5433/parallax"
+    database_url_sync: str = "postgresql+psycopg://parallax:parallax@localhost:5433/parallax"
     redis_url: str = "redis://localhost:6380/0"
 
     openai_api_key: str = ""

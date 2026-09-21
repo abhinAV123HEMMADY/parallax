@@ -60,7 +60,7 @@ async function captureFrame(rect: CaptureRect): Promise<string | null> {
   } catch (error) {
     // A screenshot is a bonus, never a reason to lose the note — DRM playback captures black and
     // captureVisibleTab can be refused outright depending on how the capture was triggered.
-    console.warn("[mentra] frame capture failed; saving note without an image", error);
+    console.warn("[parallax] frame capture failed; saving note without an image", error);
     return null;
   }
 }

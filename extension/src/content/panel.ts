@@ -10,7 +10,7 @@
 import type { Citation, NoteOut, QueuedNote, TopicSuggestion } from "../lib/types";
 import { formatTimestamp } from "./player";
 
-const HOST_ID = "mentra-watch-note-host";
+const HOST_ID = "parallax-watch-note-host";
 
 const STYLES = `
   :host { all: initial; }
@@ -129,7 +129,7 @@ export class Panel {
     wrapper.innerHTML = `
       <div class="card">
         <div class="row between">
-          <h2>Mentra — Watch &amp; Note</h2>
+          <h2>Parallax — Watch &amp; Note</h2>
           <span class="chip" data-topic>unmapped</span>
         </div>
         <div class="stack" style="margin-top:10px">
@@ -252,7 +252,7 @@ export class Panel {
     this.pendingTopicId = suggestion?.topic_id ?? null;
     if (suggestion?.topic_id) {
       this.topicChip.textContent = `${suggestion.topic_name} · ${suggestion.strategy} ${suggestion.score.toFixed(2)}`;
-      this.topicChip.title = "Mentra matched this video to a topic, so notes feed your mastery map.";
+      this.topicChip.title = "Parallax matched this video to a topic, so notes feed your mastery map.";
     } else {
       this.topicChip.textContent = "unmapped";
       this.topicChip.title =

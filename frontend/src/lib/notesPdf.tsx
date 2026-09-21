@@ -95,9 +95,9 @@ function NoteBlock({ videoId, note }: { videoId: string; note: VideoNoteWithImag
 
 export function VideoPackDocument({ pack }: { pack: VideoNotePack }) {
   return (
-    <Document title={`Mentra notes — ${pack.video_title}`} author="Mentra">
+    <Document title={`Parallax notes — ${pack.video_title}`} author="Parallax">
       <Page size="A4" style={styles.page}>
-        <Text style={styles.eyebrow}>MENTRA · VIDEO NOTES</Text>
+        <Text style={styles.eyebrow}>PARALLAX · VIDEO NOTES</Text>
         <Text style={styles.title}>{pack.video_title}</Text>
         <Text style={styles.subtitle}>
           {pack.notes.length} note{pack.notes.length === 1 ? "" : "s"} · every timestamp below is a
@@ -116,9 +116,9 @@ export function CoursePackDocument({ pack }: { pack: TopicNotePack }) {
   const total = pack.videos.reduce((sum, video) => sum + video.notes.length, 0);
 
   return (
-    <Document title={`Mentra course pack — ${pack.topic_name}`} author="Mentra">
+    <Document title={`Parallax course pack — ${pack.topic_name}`} author="Parallax">
       <Page size="A4" style={styles.page}>
-        <Text style={styles.eyebrow}>MENTRA · COURSE PACK</Text>
+        <Text style={styles.eyebrow}>PARALLAX · COURSE PACK</Text>
         <Text style={styles.title}>{pack.topic_name}</Text>
         <Text style={styles.subtitle}>
           {total} note{total === 1 ? "" : "s"} across {pack.videos.length} video

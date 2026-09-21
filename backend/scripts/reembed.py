@@ -8,7 +8,7 @@ is not available at all on a deployed database.
 
 Vectors written by different embedders are not comparable: a pgvector query embedded with
 bge-small against rows still holding hash-placeholder vectors returns ranked nonsense, silently
-and with no error. So after changing MENTRA_EMBED (or the model behind it), every embedded
+and with no error. So after changing PARALLAX_EMBED (or the model behind it), every embedded
 column has to be rewritten before any similarity search is trustworthy. Run this, not seed.py.
 
 Idempotent — safe to run repeatedly. Batched per table so one ONNX call covers many rows.
@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import select  # noqa: E402
 
-from mentra_embed import active_backend, embed_documents  # noqa: E402
+from parallax_embed import active_backend, embed_documents  # noqa: E402
 
 from app.database import async_session  # noqa: E402
 from app.models import Topic, TutorProfile, VideoTranscriptChunk  # noqa: E402

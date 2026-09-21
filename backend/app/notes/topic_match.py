@@ -1,4 +1,4 @@
-"""Maps an arbitrary YouTube video to a Mentra topic, or to nothing.
+"""Maps an arbitrary YouTube video to a Parallax topic, or to nothing.
 
 A note taken on YouTube has no topic attached — the learner is on a video, not in a lesson. But
 a note only reaches the peer layer and the flashcard generator if it has a `topic_id`, so a
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mentra_embed import embed_query
+from parallax_embed import embed_query
 
 from app.models import Topic
 

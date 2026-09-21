@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mentra_embed import embed_document  # noqa: E402
+from parallax_embed import embed_document  # noqa: E402
 
 from app.database import async_session  # noqa: E402
 from app.models import (  # noqa: E402

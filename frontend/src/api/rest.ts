@@ -1,7 +1,7 @@
 import type {
   ExamPlan,
   MasteryGraph,
-  MentraUser,
+  ParallaxUser,
   ProtegeRecap,
   ProtegeTurnResult,
   TopicNotePack,
@@ -14,7 +14,7 @@ import type {
 // dashboard env config; VITE_API_BASE_URL still overrides when set.
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ??
-  (import.meta.env.PROD ? "https://mentra-backend-mats.onrender.com" : "http://localhost:8000");
+  (import.meta.env.PROD ? "https://parallax-backend-mats.onrender.com" : "http://localhost:8000");
 
 // Every endpoint reflects real backend state or fails loudly. No client-side simulation of
 // lessons, quizzes, mastery, or Protégé Mode: if the backend is unreachable, callers see a
@@ -66,11 +66,11 @@ export function submitQuizAnswer(lessonId: string, question: string, correct: bo
 }
 
 export function listUsers() {
-  return getJson<MentraUser[]>("/users");
+  return getJson<ParallaxUser[]>("/users");
 }
 
 export function createUser(name: string, gradeLevel?: string) {
-  return postJson<MentraUser>("/users", { name, grade_level: gradeLevel ?? null });
+  return postJson<ParallaxUser>("/users", { name, grade_level: gradeLevel ?? null });
 }
 
 export function getExamPlan(learnerId: string, daysUntilExam: number): Promise<ExamPlan> {

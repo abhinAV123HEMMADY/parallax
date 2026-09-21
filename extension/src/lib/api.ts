@@ -1,5 +1,5 @@
 /**
- * Mentra API client. Runs in the service worker only.
+ * Parallax API client. Runs in the service worker only.
  *
  * That restriction is deliberate rather than incidental. A fetch from the content script would
  * carry `Origin: https://www.youtube.com`, so making it work would mean allow-listing YouTube as
@@ -11,7 +11,7 @@
 import { getSettings } from "./storage";
 import type {
   Cue,
-  MentraUser,
+  ParallaxUser,
   NoteCreate,
   NoteOut,
   TopicSuggestionResponse,
@@ -59,7 +59,7 @@ export function health() {
 }
 
 export function listUsers() {
-  return request<MentraUser[]>("/users");
+  return request<ParallaxUser[]>("/users");
 }
 
 export function createNote(payload: NoteCreate) {

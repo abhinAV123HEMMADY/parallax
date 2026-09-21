@@ -73,7 +73,7 @@ export interface VideoAskResponse {
   stubbed: boolean;
 }
 
-export interface MentraUser {
+export interface ParallaxUser {
   id: string;
   name: string;
   grade_level: string | null;

@@ -103,7 +103,7 @@ export default function ExamPlanner({ learnerId }: { learnerId: string }) {
       </span>
       <h3 style={{ marginTop: 10 }}>Exam-aware scheduling</h3>
       <p className="muted" style={{ marginTop: 0 }}>
-        Standard spaced repetition optimizes forever-retention. Set an exam date and Mentra
+        Standard spaced repetition optimizes forever-retention. Set an exam date and Parallax
         bends the tail of the schedule so your memory peaks when it counts.
       </p>
 

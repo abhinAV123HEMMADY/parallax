@@ -22,7 +22,7 @@ Backends:
        cannot be downloaded (air-gapped CI, a machine with no disk budget). Rankings are
        meaningless under it — it exists to keep things importable, not useful.
 
-Select with the MENTRA_EMBED environment variable. Read from the environment rather than from
+Select with the PARALLAX_EMBED environment variable. Read from the environment rather than from
 app.config because the MCP servers are independent processes that never import the backend's
 settings module.
 """
@@ -49,7 +49,7 @@ _model_lock = threading.Lock()
 
 def active_backend() -> str:
     """Which backend is in use — surfaced on /health so a misconfigured deploy is one curl away."""
-    return "hash" if os.environ.get("MENTRA_EMBED", "bge").lower() == "hash" else "bge"
+    return "hash" if os.environ.get("PARALLAX_EMBED", "bge").lower() == "hash" else "bge"
 
 
 def _hash_embed(text: str) -> list[float]:
@@ -64,7 +64,7 @@ def _hash_embed(text: str) -> list[float]:
 def _get_model():
     """Loads the ONNX session once per process, on first use rather than at import.
 
-    Import-time loading would be worse, not better: `import mentra_embed` happens in scripts
+    Import-time loading would be worse, not better: `import parallax_embed` happens in scripts
     that may never embed anything (init_db.py imports the models package, which is imported by
     seeding and migration paths), and the first load downloads ~130MB. Lazy-but-cached still
     guarantees the "once per process, never per call" property that matters. Double-checked

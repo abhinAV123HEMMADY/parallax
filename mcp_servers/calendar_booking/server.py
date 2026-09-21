@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import asyncpg
 from mcp.server.fastmcp import FastMCP
 
-DATABASE_URL = os.environ.get("MCP_DATABASE_URL", "postgresql://mentra:mentra@localhost:5433/mentra")
+DATABASE_URL = os.environ.get("MCP_DATABASE_URL", "postgresql://parallax:parallax@localhost:5433/parallax")
 PORT = int(os.environ.get("PORT", 8103))
 
 mcp = FastMCP("calendar-booking-mcp", port=PORT)

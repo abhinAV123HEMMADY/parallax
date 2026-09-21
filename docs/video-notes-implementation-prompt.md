@@ -1,6 +1,6 @@
 # Implementation prompt — Watch & Note as a Chrome extension
 
-Timestamped notes with real frame captures on any YouTube video, feeding Mentra's backend.
+Timestamped notes with real frame captures on any YouTube video, feeding Parallax's backend.
 
 Paste everything below the line into a fresh Claude Code session at the repo root.
 
@@ -8,7 +8,7 @@ Paste everything below the line into a fresh Claude Code session at the repo roo
 
 ## Context
 
-You are adding a **Chrome extension** client to Mentra, an existing topic-driven tutoring
+You are adding a **Chrome extension** client to Parallax, an existing topic-driven tutoring
 platform in this repo. The repo currently has `backend/` (FastAPI), `frontend/` (React/Vite
 SPA), and `mcp_servers/`. You are adding `extension/` as a second frontend against the same
 backend, plus the backend surface it needs.
@@ -35,7 +35,7 @@ conventions you found, then proceed.
 
 ## What this is, and why an extension
 
-Mentra already finds the *exact timestamp* in a lecture that explains a topic
+Parallax already finds the *exact timestamp* in a lecture that explains a topic
 (`video_curator` → the Video Transcript MCP server). Today that's a dead-end `?t=123s` link,
 and the transcript data behind it is four hand-seeded rows in `video_transcript_chunks`.
 
@@ -46,7 +46,7 @@ The extension turns YouTube itself into the workspace:
 2. Notes render as a timeline; clicking one seeks the video.
 3. Notes export to a PDF where every entry is a clickable link back to that exact second.
 4. The learner can ask questions scoped to the video; answers cite timestamps.
-5. Notes flow into Mentra's existing loop — they become FSRS flashcards, and repeated notes
+5. Notes flow into Parallax's existing loop — they become FSRS flashcards, and repeated notes
    on one topic (opt-in) surface on the peer feed.
 
 **Two capabilities exist only in an extension, and they are the justification for building
@@ -66,7 +66,7 @@ one.** Be aware of both, because they shape the design:
 
 ## Division of labour — do not port the app into the extension
 
-The extension is a capture client, not a second Mentra. Keep it thin and deep-link out.
+The extension is a capture client, not a second Parallax. Keep it thin and deep-link out.
 
 | Surface | Extension | Web app (`frontend/`) |
 |---|---|---|
@@ -162,12 +162,12 @@ These were checked against the code. Trust them over your assumptions.
 
 ### Step 0 — Real embeddings — ✅ ALREADY DONE, SKIP
 
-**This step is complete. Do not redo it.** It shipped as `shared/mentra_embed` (an editable
+**This step is complete. Do not redo it.** It shipped as `shared/parallax_embed` (an editable
 package installed with `make install-shared`), backed by `BAAI/bge-small-en-v1.5` via
 `fastembed`, 384-dim so no migration was needed. All five former `pseudo_embed` call sites in
 `backend/scripts/seed.py` and the two vector-search MCP servers now use it. `embed_query`
 applies bge's instruction prefix; `embed_document` does not — respect that asymmetry.
-`MENTRA_EMBED=hash` still selects the old placeholder, `/health` reports the active backend,
+`PARALLAX_EMBED=hash` still selects the old placeholder, `/health` reports the active backend,
 and `make reembed` rewrites stored vectors after a model change (needed because vectors from
 different embedders are not comparable). `backend/tests/test_embedding.py` covers it.
 
@@ -179,7 +179,7 @@ The original spec is kept below for context only.
 #### Original spec (for reference)
 
 Two things in this build depend on semantic similarity: ranking ingested caption chunks
-(Step 3's whole value) and mapping a video to a Mentra topic. Both are currently backed by
+(Step 3's whole value) and mapping a video to a Parallax topic. Both are currently backed by
 `pseudo_embed`, which — per the measurement above — ranks by noise. Ingesting real captions
 behind a hash-based embedding produces a bigger table that searches no better.
 
@@ -198,7 +198,7 @@ Replace it:
   on purpose and why.
 - **Load the model once at module import**, never per call. Note in a comment that each Celery
   prefork worker loads its own copy.
-- Keep a `MENTRA_EMBED=hash|bge` setting in `config.py` defaulting to `bge`, so the project
+- Keep a `PARALLAX_EMBED=hash|bge` setting in `config.py` defaulting to `bge`, so the project
   still runs where the model can't be downloaded.
 - Re-run `make seed` so existing topic/tutor/transcript embeddings are regenerated. Stale
   384-dim hash vectors mixed with real ones would silently poison every ranking.
@@ -304,7 +304,7 @@ This means the existing `search_transcripts` MCP tool starts returning genuinely
 timestamps from videos the learner actually watched. Verify end to end and paste the real
 relevance scores.
 
-**Topic resolution** — a note on an arbitrary YouTube video has no Mentra topic. Implement
+**Topic resolution** — a note on an arbitrary YouTube video has no Parallax topic. Implement
 `GET /notes/videos/{video_id}/topic-suggestion` with **two** strategies and report which wins
 on the seeded topics:
 
@@ -517,7 +517,7 @@ Note that `stream_result.py` currently omits `due_date` on insert and so falls b
 column default of "due now", losing the computed interval — do not copy that; set `due_date`
 explicitly and mention the existing inconsistency in your report rather than fixing it here.
 
-This is what makes notes part of Mentra's loop rather than a separate notebook: a moment the
+This is what makes notes part of Parallax's loop rather than a separate notebook: a moment the
 learner flagged while watching becomes a scheduled review.
 
 ### Step 12 — Tests

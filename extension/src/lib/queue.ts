@@ -18,7 +18,7 @@ import type { NoteCreate, QueuedNote } from "./types";
 
 const MAX_ATTEMPTS = 8;
 const BASE_BACKOFF_MS = 5_000;
-const ALARM = "mentra-flush-queue";
+const ALARM = "parallax-flush-queue";
 
 /** Exponential backoff, capped. Exported so the retry curve is unit-testable without chrome. */
 export function backoffMs(attempts: number): number {

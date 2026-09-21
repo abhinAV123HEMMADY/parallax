@@ -7,19 +7,19 @@
 #   VITE_WS_BASE_URL  = wss://<this-service>.onrender.com
 services:
   - type: web
-    name: mentra-backend
+    name: parallax-backend
     runtime: docker
     plan: free
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: mentra-db
+          name: parallax-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: keyvalue
-          name: mentra-redis
+          name: parallax-redis
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false # set in the dashboard when the blueprint prompts for it
@@ -27,10 +27,10 @@ services:
         value: "*" # tighten to the Vercel domain once you know it
 
   - type: keyvalue
-    name: mentra-redis
+    name: parallax-redis
     plan: free
     ipAllowList: [] # internal connections only
 
 databases:
-  - name: mentra-db
+  - name: parallax-db
     plan: free

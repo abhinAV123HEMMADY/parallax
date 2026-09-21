@@ -9,9 +9,9 @@ import os
 
 import asyncpg
 from mcp.server.fastmcp import FastMCP
-from mentra_embed import embed_query
+from parallax_embed import embed_query
 
-DATABASE_URL = os.environ.get("MCP_DATABASE_URL", "postgresql://mentra:mentra@localhost:5433/mentra")
+DATABASE_URL = os.environ.get("MCP_DATABASE_URL", "postgresql://parallax:parallax@localhost:5433/parallax")
 PORT = int(os.environ.get("PORT", 8101))
 
 mcp = FastMCP("video-transcript-mcp", port=PORT)

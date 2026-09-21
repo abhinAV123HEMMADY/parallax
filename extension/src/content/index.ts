@@ -35,7 +35,7 @@ import {
 
 async function send<T>(message: WorkerRequest): Promise<T> {
   const response = (await chrome.runtime.sendMessage(message)) as WorkerResponse<T> | undefined;
-  if (!response) throw new Error("no response from the Mentra service worker");
+  if (!response) throw new Error("no response from the Parallax service worker");
   if (!response.ok) throw new Error(response.error);
   return response.data;
 }
@@ -70,7 +70,7 @@ async function refreshNotes(): Promise<void> {
  *
  * Runs once per video, in the background, and never blocks a capture: if it hasn't finished (or
  * fails outright) a note still saves, just without a server-resolved excerpt. The ingest is what
- * makes this video searchable by Mentra's existing timestamp search, so it is worth doing eagerly
+ * makes this video searchable by Parallax's existing timestamp search, so it is worth doing eagerly
  * rather than on first note.
  */
 async function loadCaptions(): Promise<void> {
@@ -147,7 +147,7 @@ let pendingScreenshot: string | null = null;
 
 async function saveNote(text: string, share: boolean, topicId: string | null): Promise<void> {
   if (!panel || !state || !settings?.learnerId) {
-    panel?.setStatus("Pick a learner in the Mentra extension options first.", true);
+    panel?.setStatus("Pick a learner in the Parallax extension options first.", true);
     return;
   }
 
@@ -268,7 +268,7 @@ async function setup(attempt = 0): Promise<void> {
 
   panel.setTopic(null);
   panel.setStatus(
-    settings.learnerId ? "Reading captions…" : "No learner selected — open the Mentra options.",
+    settings.learnerId ? "Reading captions…" : "No learner selected — open the Parallax options.",
     !settings.learnerId,
   );
 

@@ -93,7 +93,7 @@ export default function ProtegeMode() {
           <ChatIcon size={13} /> Protégé Mode
         </span>
         <h1 style={{ marginTop: 6 }}>
-          Teach Mentra {status === "idle" ? topicInput || "…" : topicName}
+          Teach Parallax {status === "idle" ? topicInput || "…" : topicName}
         </h1>
       </div>
 
@@ -106,7 +106,7 @@ export default function ProtegeMode() {
 
       {status === "idle" && (
         <div className="card animate-in">
-          <h3 style={{ marginTop: 0 }}>Mentra plays a confused student</h3>
+          <h3 style={{ marginTop: 0 }}>Parallax plays a confused student</h3>
           <p className="muted" style={{ marginTop: 0 }}>
             It genuinely holds a few real misconceptions about the topic below and will ask
             naive follow-up questions until your explanation actually resolves them. Teaching it

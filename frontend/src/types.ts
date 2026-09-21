@@ -13,7 +13,7 @@ export interface QuizQuestion {
   reexplanations: { analogy?: string; diagram?: string; video?: VideoResult };
 }
 
-export interface MentraUser {
+export interface ParallaxUser {
   id: string;
   name: string;
   grade_level: string | null;

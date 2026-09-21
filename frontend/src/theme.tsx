@@ -10,9 +10,9 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function initialTheme(): Theme {
-  const stored = localStorage.getItem("mentra_theme");
+  const stored = localStorage.getItem("parallax_theme");
   if (stored === "light" || stored === "dark") return stored;
-  // Light is the canonical Mentra look; only follow an explicit dark preference.
+  // Light is the canonical Parallax look; only follow an explicit dark preference.
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("mentra_theme", theme);
+    localStorage.setItem("parallax_theme", theme);
   }, [theme]);
 
   const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));

@@ -8,7 +8,7 @@ assertion does.
 """
 
 import pytest
-from mentra_embed import EMBEDDING_DIM, embed_document, embed_documents, embed_query
+from parallax_embed import EMBEDDING_DIM, embed_document, embed_documents, embed_query
 
 # Straight from backend/scripts/seed.py — if these stop matching the seeded corpus, transcript
 # search is being tested against inputs it never sees in practice.

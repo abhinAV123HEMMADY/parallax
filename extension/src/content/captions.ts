@@ -85,7 +85,7 @@ export async function getCues(trackUrl: string): Promise<Cue[]> {
       }
     }
   } catch (error) {
-    console.warn("[mentra] json3 caption fetch failed, trying xml", error);
+    console.warn("[parallax] json3 caption fetch failed, trying xml", error);
   }
 
   try {
@@ -93,7 +93,7 @@ export async function getCues(trackUrl: string): Promise<Cue[]> {
     if (!response.ok) return [];
     return parseTimedTextXml(await response.text());
   } catch (error) {
-    console.warn("[mentra] caption fetch failed entirely", error);
+    console.warn("[parallax] caption fetch failed entirely", error);
     return [];
   }
 }

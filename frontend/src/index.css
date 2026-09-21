@@ -1,5 +1,5 @@
 /* ============================================================
-   Mentra — design system
+   Parallax — design system
    Editorial serif headings, deep-indigo brand, soft white cards,
    lavender/mint accents, floating pill tab bar. Light-first.
    ============================================================ */
@@ -191,13 +191,6 @@ body {
   align-items: center;
   gap: 8px;
 }
-.header-lead {
-  grid-column: 1;
-  justify-self: start;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .icon-btn {
   display: grid;
@@ -220,21 +213,6 @@ body {
   transform: scale(0.9);
 }
 
-.learner-select {
-  appearance: none;
-  padding: 8px 28px 8px 12px;
-  border-radius: var(--r-pill);
-  background: var(--surface-2)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%238b879a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
-    no-repeat right 9px center;
-  border: 1px solid transparent;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  max-width: 132px;
-  text-overflow: ellipsis;
-}
 
 .app-main {
   flex: 1;
@@ -1158,19 +1136,6 @@ button.sm {
   border-radius: 3px;
   background: var(--border);
   margin: 6px auto 16px;
-}
-
-/* centered dialog variant — for flows launched from the header (e.g. new profile), where a
-   bottom-anchored sheet would sit far from the trigger */
-.scrim.center {
-  align-items: center;
-  padding: 20px;
-}
-.sheet.dialog {
-  border-radius: 26px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 24px;
-  animation: pop 0.32s var(--ease-out);
 }
 
 /* skeleton shimmer */

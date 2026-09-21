@@ -10,18 +10,18 @@ interface LearnerContextValue {
 const LearnerContext = createContext<LearnerContextValue | null>(null);
 
 export function LearnerProvider({ children }: { children: React.ReactNode }) {
-  const [learnerId, setLearnerId] = useState(localStorage.getItem("mentra_learner_id") ?? "u_amy");
+  const [learnerId, setLearnerId] = useState(localStorage.getItem("parallax_learner_id") ?? "u_amy");
   // Whatever topic was last generated on the main Learn page — Protégé Mode defaults to it
   // instead of a hardcoded topic, falling back to "derivatives" only for a first-ever visit.
-  const [lastTopic, setLastTopic] = useState(localStorage.getItem("mentra_last_topic") ?? "derivatives");
+  const [lastTopic, setLastTopic] = useState(localStorage.getItem("parallax_last_topic") ?? "derivatives");
 
   const update = (id: string) => {
-    localStorage.setItem("mentra_learner_id", id);
+    localStorage.setItem("parallax_learner_id", id);
     setLearnerId(id);
   };
 
   const updateTopic = (topic: string) => {
-    localStorage.setItem("mentra_last_topic", topic);
+    localStorage.setItem("parallax_last_topic", topic);
     setLastTopic(topic);
   };
 
