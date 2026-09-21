@@ -13,7 +13,7 @@
 # Postgres with asyncpg, which breaks against pgbouncer in transaction mode over prepared
 # statements.
 
-app = "parallax-api"
+app = "parallax-anvi-api"
 primary_region = "sjc"
 
 [build]
@@ -45,6 +45,6 @@ primary_region = "sjc"
   # 1GB, not the 512MB default. Measured on the built image: 386MB idle, 512MB once the API
   # loads the embedding model, and the two vector MCP servers each load their own copy when
   # first queried. 512MB OOMs; this leaves headroom for all three.
-  memory = "1gb"
+  memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
