@@ -5,7 +5,20 @@ timestamp the model invented sends the learner to the wrong part of a lecture an
 product bug. These assert that an invented timestamp never survives.
 """
 
+import pytest
+
+from app.config import settings
 from app.orchestrator.nodes.video_qa import _validate_citations, answer_about_video
+
+
+@pytest.fixture
+def no_model(monkeypatch):
+    """Clears the key `llm_enabled()` reads, pinning every node to its stub.
+
+    This test previously passed only because no key happened to be configured, so committing one
+    turned the suite red without any behaviour changing. The stub path is a documented contract
+    and has to be assertable on a machine that does have a key."""
+    monkeypatch.setattr(settings, "openai_api_key", "")
 
 CHUNKS = [
     {"t_seconds": 0, "text": "A limit describes what a function approaches."},
@@ -52,7 +65,7 @@ def test_malformed_citations_ignored():
     assert [c["t_seconds"] for c in kept] == [0]
 
 
-async def test_stub_path_has_documented_shape_without_a_key():
+async def test_stub_path_has_documented_shape_without_a_key(no_model):
     """With no API key every LLM node falls back; the fallback must return the same shape."""
     result = await answer_about_video(
         question="what is the slope of a curve?", video_title="Calculus intro", chunks=CHUNKS

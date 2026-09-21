@@ -19,6 +19,7 @@ from app.database import get_db
 from app.mastery.service import record_note_signal
 from app.models import Flashcard, Lesson, Topic, User, VideoNote, VideoTranscriptChunk
 from app.notes.captions import CaptionTooLarge, Chunk, Cue, excerpt_at, group_cues, validate
+from app.notes.topic_autocreate import ensure_topic, propose_topic
 from app.notes.topic_match import suggest_topic
 from app.orchestrator.nodes.notes_to_flashcards import cards_from_notes
 from app.orchestrator.nodes.video_qa import answer_about_video
@@ -107,7 +108,7 @@ async def create_note(payload: NoteCreate, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=404, detail="topic not found")
     else:
         # No explicit topic: fall back to the suggestion, which returns None when it isn't
-        # confident. An unmapped note is fine — it still renders and exports.
+        # confident.
         transcript = " ".join(c.chunk_text for c in chunks)
         suggestion = await suggest_topic(
             db,
@@ -117,6 +118,15 @@ async def create_note(payload: NoteCreate, db: AsyncSession = Depends(get_db)):
             settings.note_topic_semantic_threshold,
         )
         topic_id = suggestion["chosen"].topic_id
+
+        if topic_id is None:
+            # Nothing in the graph is a confident match, which on arbitrary YouTube usually
+            # means the subject isn't in the graph at all rather than that the note can't be
+            # attributed. Mint the topic so the note keeps flashcards, struggle signals and the
+            # peer layer instead of being stranded as unmapped.
+            topic_id, _ = await ensure_topic(
+                db, payload.video_title, transcript, video_id=payload.video_id
+            )
 
     note = VideoNote(
         id=str(uuid.uuid4()),
@@ -315,10 +325,18 @@ async def topic_suggestion(
         settings.note_topic_lexical_threshold,
         settings.note_topic_semantic_threshold,
     )
+    proposed = None
+    if result["chosen"].topic_id is None and (title or transcript):
+        # Preview only. Saving a note is what actually mints the topic, so a learner who opens a
+        # video and never takes a note leaves no trace in the graph.
+        proposal = await propose_topic(title, transcript)
+        proposed = {"name": proposal.name, "subject": proposal.subject}
+
     return TopicSuggestionResponse(
         chosen=result["chosen"].__dict__,
         lexical=result["lexical"].__dict__,
         semantic=result["semantic"].__dict__,
+        proposed=proposed,
     )
 
 

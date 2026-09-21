@@ -77,10 +77,23 @@ class TopicSuggestionOut(BaseModel):
     strategy: str
 
 
+class ProposedTopicOut(BaseModel):
+    """The topic that saving a note would create, when neither matcher is confident.
+
+    Reported by the GET so the panel can name the subject before anything is written — the
+    endpoint stays a pure read, and creation stays on the POST that needs it.
+    """
+
+    name: str
+    subject: str
+
+
 class TopicSuggestionResponse(BaseModel):
     chosen: TopicSuggestionOut
     lexical: TopicSuggestionOut
     semantic: TopicSuggestionOut
+    # Null whenever `chosen` matched an existing topic — there is nothing to create.
+    proposed: ProposedTopicOut | None = None
 
 
 class VideoAskRequest(BaseModel):
